@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beam Bending &amp; Deflection Analyzer</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#09090b;--panel:#111827;--panel2:#0f172a;--line:#1e293b;--tx:#e2e8f0;--mut:#94a3b8;
+--v:#22d3ee;--m:#e879f9;--d:#a3e635;--s:#fbbf24;--bad:#f87171;--ok:#34d399}
+html,body{background:var(--bg);color:var(--tx);font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif}
+.panel{background:var(--panel2);border:1px solid var(--line);border-radius:10px}
+.lbl{font-size:.72rem;color:var(--mut);display:block;margin-bottom:2px}
+.inp{width:100%;background:#020617;border:1px solid #334155;border-radius:6px;padding:5px 8px;font-size:.85rem;color:var(--tx);font-variant-numeric:tabular-nums}
+.inp:focus{outline:2px solid var(--v);outline-offset:1px}
+.seg button{flex:1;padding:6px 4px;font-size:.78rem;border:1px solid #334155;background:#020617;color:var(--mut)}
+.seg button:first-child{border-radius:6px 0 0 6px}.seg button:last-child{border-radius:0 6px 6px 0}
+.seg button.on{background:#0e7490;color:#fff;border-color:#22d3ee}
+.btn{font-size:.78rem;padding:6px 8px;border-radius:6px;border:1px solid #334155;background:#1e293b}
+.btn:hover{background:#334155}
+.num{font-variant-numeric:tabular-nums;font-family:"IBM Plex Mono",ui-monospace,monospace}
+.h{font-size:.85rem;font-weight:600;margin-bottom:8px}
+@keyframes pulse2{50%{opacity:.55}}
+.fail{animation:pulse2 1.1s infinite}
+@media (prefers-reduced-motion:reduce){.fail{animation:none}}
+</style>
+</head>
+<body>
+<header class="px-4 py-3 border-b" style="border-color:var(--line)">
+  <h1 class="text-lg font-semibold">Beam Bending &amp; Deflection Analyzer</h1>
+  <p class="text-xs" style="color:var(--mut)">Solid Mechanics · Euler–Bernoulli beam · hover any chart to read V, M, v and σ at that x</p>
+</header>
+<main class="grid gap-4 p-4 lg:grid-cols-[370px_1fr]">
+<aside class="space-y-3">
+  <div class="panel p-3">
+    <div class="h">Boundary condition</div>
+    <div class="seg flex" id="bc">
+      <button data-v="ss" class="on">Simply supported</button><button data-v="cant">Cantilever</button><button data-v="fix">Fixed–fixed</button>
+    </div>
+    <p class="text-[11px] mt-2" style="color:var(--mut)" id="bcnote"></p>
+  </div>
+  <div class="panel p-3">
+    <div class="h">Geometry</div>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="lbl">Length L (m)</label><input class="inp" type="number" step="0.1" min="0.1" data-k="L"></div>
+      <div><label class="lbl">Cross-section</label>
+        <select class="inp" data-k="sec"><option value="rect">Rectangular</option><option value="circ">Circular</option></select></div>
+      <div class="rect"><label class="lbl">Width b (mm)</label><input class="inp" type="number" min="1" data-k="b"></div>
+      <div class="rect"><label class="lbl">Height h (mm)</label><input class="inp" type="number" min="1" data-k="h"></div>
+      <div class="circ hidden"><label class="lbl">Diameter d (mm)</label><input class="inp" type="number" min="1" data-k="d"></div>
+    </div>
+    <div class="num text-[11px] mt-2" style="color:var(--mut)" id="secinfo"></div>
+  </div>
+  <div class="panel p-3">
+    <div class="h">Material</div>
+    <div class="grid grid-cols-2 gap-2">
+      <div class="col-span-2"><label class="lbl">Preset</label>
+        <select class="inp" id="mat"><option>Steel</option><option>Aluminum</option><option>Wood</option><option>Custom</option></select></div>
+      <div><label class="lbl">Young’s modulus E (GPa)</label><input class="inp" type="number" min="0.1" step="any" data-k="E"></div>
+      <div><label class="lbl">Yield / breaking stress (MPa)</label><input class="inp" type="number" min="1" step="any" data-k="Sy"></div>
+    </div>
+  </div>
+  <div class="panel p-3">
+    <div class="flex items-center justify-between mb-2"><div class="h !mb-0">Loads</div></div>
+    <div class="grid grid-cols-3 gap-2 mb-3">
+      <button class="btn" id="addP">+ Point</button><button class="btn" id="addW">+ UDL</button><button class="btn" id="addM">+ Moment</button>
+    </div>
+    <div id="loads" class="space-y-2"></div>
+    <p class="text-[11px] mt-2" style="color:var(--mut)">Positive: point and UDL act downward, moments act clockwise. Use a negative value to reverse.</p>
+  </div>
+</aside>
+
+<section class="space-y-3 min-w-0">
+  <div id="status" class="rounded-lg px-4 py-3 text-sm font-medium"></div>
+  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3" id="cards"></div>
+  <div class="panel p-3"><div class="flex flex-wrap items-center justify-between gap-2 mb-2"><div class="h !mb-0" style="color:var(--s)">Live bending simulation</div><div class="flex gap-2"><button class="btn" id="simRamp">Ramp load to failure</button><button class="btn" id="simReset">Reset</button></div></div><div class="flex items-center gap-3 mb-2"><label class="lbl !mb-0 whitespace-nowrap" for="simSl">Load multiplier</label><input id="simSl" type="range" min="0" max="3" step="0.01" value="1" class="w-full"><span class="num text-sm w-16 text-right" id="simMul">×0.00</span></div><div style="height:300px"><canvas id="sim" class="block w-full h-full"></canvas></div><div class="num text-[11px] mt-1" style="color:var(--mut)" id="simInfo"></div></div>
+  <div class="panel p-3"><div class="h">Beam schematic</div><div style="height:195px"><canvas id="beam" class="w-full h-full"></canvas></div></div>
+  <div class="panel p-3"><div class="h" style="color:var(--v)">Shear force V(x)</div><div style="height:185px"><canvas id="cV"></canvas></div></div>
+  <div class="panel p-3"><div class="h" style="color:var(--m)">Bending moment M(x)</div><div style="height:185px"><canvas id="cM"></canvas></div></div>
+  <div class="panel p-3"><div class="h" style="color:var(--d)">Deflection v(x) (negative = downward)</div><div style="height:185px"><canvas id="cD"></canvas></div></div>
+  <div class="grid md:grid-cols-2 gap-3">
+    <div class="panel p-3"><div class="h" style="color:var(--s)">Bending stress across section, σ = −M·y / I</div><div class="text-[11px] mb-1 num" style="color:var(--mut)" id="stnote"></div><div style="height:270px"><canvas id="cS"></canvas></div></div>
+    <div class="panel p-3"><div class="h">Readout at cursor</div><div id="read" class="num text-sm space-y-1"></div>
+      <div class="h mt-4">Support reactions</div><div id="react" class="num text-sm space-y-1"></div></div>
+  </div>
+</section>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const f=(n,d=2)=>Math.abs(n)<1e-9?'0':n.toFixed(d);
+const MAT={Steel:[200,250],Aluminum:[69,275],Wood:[11,40]};
+const S={bc:'ss',L:6,sec:'rect',b:100,h:200,d:150,E:200,Sy:250,
+ loads:[{t:'P',P:20,a:2},{t:'W',w:10,a:3,b:6}]};
+let R=null,hoverX=null,raf=0;
+const FIELDS={P:[['P','Load (kN)'],['a','x (m)']],W:[['w','w (kN/m)'],['a','Start (m)'],['b','End (m)']],M:[['M','M (kN·m)'],['a','x (m)']]};
+const NAME={P:'Point load',W:'Uniform load',M:'Moment'};
+const COL={P:'#fb923c',W:'#38bdf8',M:'#c084fc'};
+const NOTE={ss:'Pin at x = 0, roller at x = L.',cant:'Fixed at x = 0, free end at x = L.',fix:'Fixed at both ends (statically indeterminate, solved by compatibility).'};
+
+/* ---------- analysis ---------- */
+function section(){
+  if(S.sec==='rect'){const b=S.b/1e3,h=S.h/1e3;return{I:b*h**3/12,c:h/2,A:b*h};}
+  const d=S.d/1e3;return{I:Math.PI*d**4/64,c:d/2,A:Math.PI*d*d/4};
+}
+function trapz(x,y){let s=0;for(let i=1;i<x.length;i++)s+=(y[i]+y[i-1])/2*(x[i]-x[i-1]);return s;}
+function cum(x,y){const o=[0];for(let i=1;i<x.length;i++)o.push(o[i-1]+(y[i]+y[i-1])/2*(x[i]-x[i-1]));return o;}
+function solve(){
+  const L=S.L,{I,c}=section(),EI=S.E*1e9*I;
+  if(!(L>0&&I>0&&EI>0))return null;
+  const cl=v=>Math.min(Math.max(v,0),L);
+  const ld=S.loads.map(l=>l.t==='P'?{t:'P',P:l.P*1e3,a:cl(l.a)}:l.t==='W'?{t:'W',w:l.w*1e3,a:cl(Math.min(l.a,l.b)),b:cl(Math.max(l.a,l.b))}:{t:'M',M:l.M*1e3,a:cl(l.a)});
+  const lv=x=>{let v=0;for(const l of ld){if(l.t==='P'&&x>l.a)v-=l.P;else if(l.t==='W')v-=l.w*Math.max(0,Math.min(x,l.b)-l.a);}return v;};
+  const lm=x=>{let m=0;for(const l of ld){
+    if(l.t==='P'&&x>l.a)m-=l.P*(x-l.a);
+    else if(l.t==='M'&&x>l.a)m+=l.M;
+    else if(l.t==='W'){const k=Math.max(0,Math.min(x,l.b)-l.a);if(k>0)m-=l.w*k*(x-l.a-k/2);}}return m;};
+  const Ftot=ld.reduce((s,l)=>s+(l.t==='P'?l.P:l.t==='W'?l.w*(l.b-l.a):0),0);
+  const N=600,eps=L*1e-7;let xs=[];for(let i=0;i<=N;i++)xs.push(L*i/N);
+  const sp=[0,L];ld.forEach(l=>{sp.push(l.a);if(l.t==='W')sp.push(l.b);});
+  sp.forEach(a=>[a-eps,a+eps].forEach(v=>{if(v>=0&&v<=L)xs.push(v);}));
+  xs=[...new Set(xs)].sort((a,b)=>a-b);
+  const Le=L*(1+1e-9);let R0=0,Mw=0,reac={};
+  if(S.bc==='ss'){R0=-lm(Le)/L;reac={A:R0,B:Ftot-R0};}
+  else if(S.bc==='cant'){R0=Ftot;Mw=-(lm(Le)+R0*L);reac={A:R0,MA:Mw};}
+  else{
+    const mB=xs.map(lm),I0=trapz(xs,mB),I1=trapz(xs,xs.map((x,i)=>(L-x)*mB[i]));
+    const a11=L*L/2,a12=L,a21=L**3/6,a22=L*L/2,b1=-I0,b2=-I1,det=a11*a22-a12*a21;
+    R0=(b1*a22-a12*b2)/det;Mw=(a11*b2-a21*b1)/det;
+  }
+  const V=xs.map(x=>lv(x)+R0),M=xs.map(x=>lm(x)+R0*x+Mw);
+  V[0]=0;V[V.length-1]=0;
+  if(S.bc==='fix'){reac={A:R0,MA:Mw,B:Ftot-R0,MB:M[M.length-1]};}
+  const th=cum(xs,M.map(m=>m/EI)),vr=cum(xs,th);
+  const th0=S.bc==='ss'?-vr[vr.length-1]/L:0;
+  const v=vr.map((y,i)=>y+th0*xs[i]);
+  const amax=a=>{let k=0;a.forEach((y,i)=>{if(Math.abs(y)>Math.abs(a[k]))k=i;});return k;};
+  const kM=amax(M),kV=amax(V),kD=amax(v);
+  const sig=Math.abs(M[kM])*c/I/1e6;
+  return{xs,V,M,v,I,c,EI,kM,kV,kD,sig,reac,Ftot,
+    Mmax:M[kM],Vmax:V[kV],Dmax:v[kD],xM:xs[kM],xV:xs[kV],xD:xs[kD]};
+}
+function idxAt(x){const a=R.xs;let lo=0,hi=a.length-1;while(hi-lo>1){const m=(lo+hi)>>1;(a[m]<=x?lo=m:hi=m);}return Math.abs(a[lo]-x)<Math.abs(a[hi]-x)?lo:hi;}
+
+/* ---------- charts ---------- */
+const grid={color:'#1e293b'},tick={color:'#94a3b8',font:{size:10}};
+const xhair={id:'xhair',afterDatasetsDraw(ch){
+  if(hoverX==null)return;const x=ch.scales.x.getPixelForValue(hoverX),a=ch.chartArea,c=ch.ctx;
+  c.save();c.strokeStyle='#e2e8f0';c.setLineDash([4,4]);c.lineWidth=1;c.beginPath();c.moveTo(x,a.top);c.lineTo(x,a.bottom);c.stroke();c.restore();}};
+function mk(id,col,name,unit){
+  const ch=new Chart($(id),{type:'line',plugins:[xhair],
+   data:{datasets:[{data:[],borderColor:col,backgroundColor:col+'26',fill:'origin',borderWidth:2,pointRadius:0,pointHoverRadius:4,tension:0,parsing:false,normalized:true},
+     {data:[],showLine:false,pointRadius:6,pointStyle:'rectRot',backgroundColor:'#f87171',borderColor:'#fff',borderWidth:1}]},
+   options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{right:20}},
+    interaction:{mode:'nearest',axis:'x',intersect:false},
+    scales:{x:{type:'linear',min:0,max:6,grid,ticks:tick,title:{display:true,text:'x (m)',color:'#64748b'}},
+            y:{grid,ticks:tick,title:{display:true,text:unit,color:'#64748b'},afterFit:a=>{a.width=60;}}},
+    plugins:{legend:{display:false},tooltip:{filter:i=>i.datasetIndex===0,backgroundColor:'#020617',borderColor:col,borderWidth:1,
+      callbacks:{title:i=>'x = '+i[0].parsed.x.toFixed(3)+' m',label:i=>name+' = '+i.parsed.y.toPrecision(5)+' '+unit}}}}});
+  const cv=$(id);
+  cv.addEventListener('pointermove',e=>{const r=cv.getBoundingClientRect(),x=ch.scales.x.getValueForPixel(e.clientX-r.left);setHover(Math.min(Math.max(x,0),S.L));});
+  cv.addEventListener('pointerleave',()=>setHover(null));
+  return ch;
+}
+const chV=mk('cV','#22d3ee','V','kN'),chM=mk('cM','#e879f9','M','kN·m'),chD=mk('cD','#a3e635','v','mm');
+const chS=new Chart($('cS'),{type:'line',data:{datasets:[
+  {data:[],borderColor:'#fbbf24',borderWidth:3,pointRadius:0,parsing:false,label:'σ(y)'},
+  {data:[],borderColor:'#f87171',borderDash:[6,4],borderWidth:1.5,pointRadius:0,parsing:false,label:'+yield'},
+  {data:[],borderColor:'#f87171',borderDash:[6,4],borderWidth:1.5,pointRadius:0,parsing:false,label:'−yield'},
+  {data:[],showLine:false,pointRadius:6,backgroundColor:'#fbbf24',borderColor:'#fff',parsing:false,label:'extreme fibre'}]},
+  options:{responsive:true,maintainAspectRatio:false,animation:false,
+   scales:{x:{type:'linear',grid:{color:c=>c.tick.value===0?'#64748b':'#1e293b'},ticks:tick,title:{display:true,text:'σ (MPa), tension +',color:'#64748b'}},
+           y:{type:'linear',grid:{color:c=>c.tick.value===0?'#64748b':'#1e293b'},ticks:tick,title:{display:true,text:'y from neutral axis (mm)',color:'#64748b'}}},
+   plugins:{legend:{labels:{color:'#94a3b8',boxWidth:12,font:{size:10},filter:i=>i.text!=='extreme fibre'}},
+     tooltip:{callbacks:{label:i=>i.dataset.label+': σ = '+i.parsed.x.toFixed(2)+' MPa at y = '+i.parsed.y.toFixed(1)+' mm'}}}}});
+
+function setHover(x){hoverX=x;if(!raf)raf=requestAnimationFrame(()=>{raf=0;[chV,chM,chD].forEach(c=>c.draw());drawBeam();updStress();});}
+
+/* ---------- schematic ---------- */
+function arrow(c,x,y1,y2,col){c.strokeStyle=col;c.fillStyle=col;c.lineWidth=2;c.beginPath();c.moveTo(x,y1);c.lineTo(x,y2);c.stroke();head(c,x,y2,0,Math.sign(y2-y1)||1);}
+function head(c,x,y,dx,dy){const a=Math.atan2(dy,dx);c.beginPath();c.moveTo(x,y);c.lineTo(x-9*Math.cos(a-.4),y-9*Math.sin(a-.4));c.lineTo(x-9*Math.cos(a+.4),y-9*Math.sin(a+.4));c.closePath();c.fill();}
+function drawBeam(){
+  const cv=$('beam'),p=cv.parentElement,W=p.clientWidth,H=p.clientHeight,dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr;cv.height=H*dpr;const c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,W,H);
+  const x0=60,x1=W-20,L=S.L,X=x=>x0+Math.min(Math.max(x,0),L)/L*(x1-x0),by=108,th=12,top=by-th/2,bot=by+th/2;
+  c.font='11px IBM Plex Mono, monospace';c.textAlign='center';
+  const wall=(x,dir)=>{c.fillStyle='#334155';c.fillRect(dir<0?x-8:x,by-38,8,76);c.strokeStyle='#64748b';c.lineWidth=1;
+    for(let y=by-34;y<by+38;y+=9){c.beginPath();c.moveTo(dir<0?x-8:x+8,y);c.lineTo(dir<0?x-16:x+16,y+8);c.stroke();}};
+  if(S.bc==='ss'){
+    c.fillStyle='#475569';c.beginPath();c.moveTo(X(0),bot);c.lineTo(X(0)-11,bot+18);c.lineTo(X(0)+11,bot+18);c.fill();
+    c.beginPath();c.moveTo(X(L),bot);c.lineTo(X(L)-11,bot+14);c.lineTo(X(L)+11,bot+14);c.fill();
+    c.fillStyle='#94a3b8';[-5,5].forEach(d=>{c.beginPath();c.arc(X(L)+d,bot+19,3.5,0,7);c.fill();});
+  }else{wall(X(0),-1);if(S.bc==='fix')wall(X(L),1);}
+  c.fillStyle='#cbd5e1';c.fillRect(x0,top,x1-x0,th);
+  if(R){ // exaggerated deformed shape
+    const sc=Math.abs(R.Dmax)>1e-12?Math.min(26/Math.abs(R.Dmax*1e3),1e9):0;
+    c.strokeStyle='#a3e635';c.lineWidth=2;c.setLineDash([5,3]);c.beginPath();
+    R.xs.forEach((x,i)=>{const px=X(x),py=by-R.v[i]*1e3*sc*1;i?c.lineTo(px,py):c.moveTo(px,py);});c.stroke();c.setLineDash([]);
+  }
+  S.loads.forEach(l=>{const col=COL[l.t];c.fillStyle=col;c.strokeStyle=col;
+    if(l.t==='P'){const x=X(l.a),dn=l.P>=0;dn?arrow(c,x,top-56,top,col):arrow(c,x,bot+56,bot,col);
+      c.fillText(f(l.P,1)+' kN',x,dn?top-62:bot+68);}
+    else if(l.t==='W'){const a=X(Math.min(l.a,l.b)),b=X(Math.max(l.a,l.b)),dn=l.w>=0,y=dn?top-30:bot+30;
+      c.lineWidth=2;c.beginPath();c.moveTo(a,y);c.lineTo(b,y);c.stroke();
+      const n=Math.max(2,Math.round((b-a)/16));for(let i=0;i<=n;i++){const x=a+(b-a)*i/n;dn?arrow(c,x,y,top,col):arrow(c,x,y,bot,col);}
+      c.fillText(f(l.w,1)+' kN/m',(a+b)/2,dn?y-6:y+16);}
+    else{const x=X(l.a),cy=top-26,r=15,cw=l.M>=0;c.lineWidth=2;c.beginPath();c.arc(x,cy,r,-2.4,.6);c.stroke();
+      if(cw){head(c,x+r*Math.cos(.6),cy+r*Math.sin(.6),-Math.sin(.6),Math.cos(.6));}
+      else{head(c,x+r*Math.cos(-2.4),cy+r*Math.sin(-2.4),Math.sin(-2.4),-Math.cos(-2.4));}
+      c.fillText(f(l.M,1)+' kN·m',x,cy-r-6);}
+  });
+  const ay=H-26;c.strokeStyle='#64748b';c.fillStyle='#94a3b8';c.lineWidth=1;c.beginPath();c.moveTo(x0,ay);c.lineTo(x1,ay);c.stroke();
+  const nt=Math.min(10,Math.max(2,Math.floor((x1-x0)/70)));
+  for(let i=0;i<=nt;i++){const x=x0+(x1-x0)*i/nt;c.beginPath();c.moveTo(x,ay-4);c.lineTo(x,ay+4);c.stroke();c.fillText(f(L*i/nt,2),x,ay+17);}
+  if(hoverX!=null){c.strokeStyle='#e2e8f0';c.setLineDash([4,4]);c.beginPath();c.moveTo(X(hoverX),12);c.lineTo(X(hoverX),ay);c.stroke();c.setLineDash([]);}
+  c.textAlign='left';c.fillStyle='#a3e635';c.fillText('- - deflected shape (exaggerated)',x0,14);
+}
+
+/* ---------- update ---------- */
+function updStress(){
+  if(!R)return;const x=hoverX??R.xM,k=idxAt(x),M=R.M[k],c=R.c,I=R.I,cmm=c*1e3;
+  const sf=-M*c/I/1e6;const lim=Math.max(S.Sy,Math.abs(sf))*1.15;
+  chS.data.datasets[0].data=[{x:-M*(-c)/I/1e6,y:-cmm},{x:sf,y:cmm}];
+  chS.data.datasets[1].data=[{x:S.Sy,y:-cmm},{x:S.Sy,y:cmm}];
+  chS.data.datasets[2].data=[{x:-S.Sy,y:-cmm},{x:-S.Sy,y:cmm}];
+  chS.data.datasets[3].data=[{x:sf,y:cmm},{x:-sf,y:-cmm}];
+  chS.options.scales.x.min=-lim;chS.options.scales.x.max=lim;
+  chS.options.scales.y.min=-cmm*1.1;chS.options.scales.y.max=cmm*1.1;chS.update('none');
+  $('stnote').textContent=`Section at x = ${f(R.xs[k],3)} m · M = ${f(M/1e3,2)} kN·m · |σ|max = ${f(Math.abs(sf),2)} MPa`+(hoverX==null?' (critical section)':'');
+  const row=(n,v,u,col)=>`<div class="flex justify-between"><span style="color:${col}">${n}</span><span>${v} ${u}</span></div>`;
+  $('read').innerHTML=`<div class="text-xs" style="color:var(--mut)">${hoverX==null?'Move the cursor over a chart. Showing max-moment section.':'Cursor position'}</div>`+
+   row('x',f(R.xs[k],3),'m','#e2e8f0')+row('V',f(R.V[k]/1e3,3),'kN','#22d3ee')+row('M',f(M/1e3,3),'kN·m','#e879f9')+
+   row('v',f(R.v[k]*1e3,3),'mm','#a3e635')+row('σ at extreme fibre',f(Math.abs(sf),2),'MPa','#fbbf24');
+}
+function update(){
+  R=solve();const st=$('status');
+  if(!R){st.className='rounded-lg px-4 py-3 text-sm font-medium bg-slate-800';st.textContent='Enter positive values for length, section size and E.';return;}
+  [chV,chM,chD].forEach(ch=>{ch.options.scales.x.max=S.L;});
+  const pts=(a,s)=>a.map((y,i)=>({x:R.xs[i],y:y*s}));
+  chV.data.datasets[0].data=pts(R.V,1e-3);chV.data.datasets[1].data=[{x:R.xV,y:R.Vmax/1e3}];
+  chM.data.datasets[0].data=pts(R.M,1e-3);chM.data.datasets[1].data=[{x:R.xM,y:R.Mmax/1e3}];
+  chD.data.datasets[0].data=pts(R.v,1e3);chD.data.datasets[1].data=[{x:R.xD,y:R.Dmax*1e3}];
+  [chV,chM,chD].forEach(ch=>ch.update('none'));
+  const fos=R.sig>0?S.Sy/R.sig:Infinity,pct=R.sig/S.Sy*100;
+  const cls=fos<1?['rgba(248,113,113,.18)','#f87171','FAILURE: bending stress exceeds the yield strength. Reduce loads or enlarge the section.',' fail']:
+            fos<2?['rgba(251,191,36,.15)','#fbbf24','CAUTION: factor of safety below 2. The beam is close to its limit.','']:
+                  ['rgba(52,211,153,.13)','#34d399','SAFE: stress is well below the yield strength.',''];
+  st.className='rounded-lg px-4 py-3 text-sm font-medium'+cls[3];st.style.cssText=`background:${cls[0]};border:1px solid ${cls[1]};color:${cls[1]}`;
+  st.innerHTML=`${cls[2]} <span class="num">FoS = ${isFinite(fos)?f(fos,2):'∞'} · σmax = ${f(R.sig,1)} of ${f(S.Sy,0)} MPa (${f(pct,0)}%)</span>`;
+  const card=(t,v,u,sub,col)=>`<div class="panel p-3"><div class="text-[11px]" style="color:var(--mut)">${t}</div><div class="num text-xl font-semibold" style="color:${col}">${v}<span class="text-xs ml-1">${u}</span></div><div class="num text-[11px]" style="color:var(--mut)">${sub}</div></div>`;
+  const dm=Math.abs(R.Dmax);
+  $('cards').innerHTML=card('Max bending moment',f(Math.abs(R.Mmax)/1e3,2),'kN·m','at x = '+f(R.xM,3)+' m','#e879f9')+
+    card('Max shear force',f(Math.abs(R.Vmax)/1e3,2),'kN','at x = '+f(R.xV,3)+' m','#22d3ee')+
+    card('Max deflection',f(dm*1e3,3),'mm',dm>0?'at x = '+f(R.xD,3)+' m · L/'+f(S.L/dm,0):'none','#a3e635')+
+    card('Max bending stress',f(R.sig,1),'MPa','yield '+f(S.Sy,0)+' MPa',fos<1?'#f87171':'#fbbf24');
+  const r=R.reac,kn=v=>f(v/1e3,2);const row=(n,v,u)=>`<div class="flex justify-between"><span>${n}</span><span>${v} ${u}</span></div>`;
+  $('react').innerHTML=(S.bc==='ss'?row('R at x = 0',kn(r.A),'kN ↑')+row('R at x = L',kn(r.B),'kN ↑'):
+    S.bc==='cant'?row('Wall reaction',kn(r.A),'kN ↑')+row('Wall moment',kn(r.MA),'kN·m'):
+    row('R at x = 0',kn(r.A),'kN ↑')+row('M at x = 0',kn(r.MA),'kN·m')+row('R at x = L',kn(r.B),'kN ↑')+row('M at x = L',kn(r.MB),'kN·m'))+
+    `<div class="text-[11px]" style="color:var(--mut)">Total applied downward force: ${kn(R.Ftot)} kN</div>`;
+  const s=section();$('secinfo').textContent=`I = ${(s.I*1e12/1e6).toExponential(3)}×10⁶ mm⁴ · c = ${f(s.c*1e3,1)} mm · EI = ${f(R.EI/1e3,1)} kN·m²`;
+  drawBeam();updStress();simSetup();
+}
+
+/* ---------- inputs ---------- */
+function syncInputs(){
+  document.querySelectorAll('[data-k]').forEach(e=>{e.value=S[e.dataset.k];});
+  document.querySelectorAll('.rect').forEach(e=>e.classList.toggle('hidden',S.sec!=='rect'));
+  document.querySelectorAll('.circ').forEach(e=>e.classList.toggle('hidden',S.sec!=='circ'));
+  document.querySelectorAll('#bc button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.bc));
+  $('bcnote').textContent=NOTE[S.bc];
+}
+document.querySelectorAll('[data-k]').forEach(e=>e.addEventListener('input',()=>{
+  const k=e.dataset.k;if(k==='sec'){S.sec=e.value;syncInputs();}
+  else{const v=parseFloat(e.value);if(!isFinite(v))return;S[k]=v;if(k==='E'||k==='Sy')$('mat').value='Custom';}
+  update();}));
+document.querySelectorAll('#bc button').forEach(b=>b.onclick=()=>{S.bc=b.dataset.v;syncInputs();update();});
+$('mat').onchange=e=>{const m=MAT[e.target.value];if(m){S.E=m[0];S.Sy=m[1];syncInputs();update();}};
+function renderLoads(){
+  $('loads').innerHTML=S.loads.length?S.loads.map((l,i)=>`<div class="rounded-md p-2" style="background:#020617;border:1px solid #334155;border-left:3px solid ${COL[l.t]}">
+    <div class="flex justify-between items-center mb-1"><span class="text-xs font-medium" style="color:${COL[l.t]}">${NAME[l.t]}</span>
+    <button data-del="${i}" class="text-xs px-2 rounded" style="color:#f87171" aria-label="Remove load">Remove</button></div>
+    <div class="grid grid-cols-${FIELDS[l.t].length} gap-2">${FIELDS[l.t].map(([k,n])=>`<div><label class="lbl">${n}</label><input class="inp" type="number" step="any" value="${l[k]}" data-i="${i}" data-f="${k}"></div>`).join('')}</div></div>`).join(''):
+    '<p class="text-xs" style="color:var(--mut)">No loads yet. Add a point load, UDL or moment above.</p>';
+}
+$('loads').addEventListener('input',e=>{const t=e.target;if(t.dataset.i==null)return;const v=parseFloat(t.value);if(!isFinite(v))return;S.loads[+t.dataset.i][t.dataset.f]=v;update();});
+$('loads').addEventListener('click',e=>{const d=e.target.dataset.del;if(d==null)return;S.loads.splice(+d,1);renderLoads();update();});
+const mid=()=>+(S.L/2).toFixed(2);
+$('addP').onclick=()=>{S.loads.push({t:'P',P:10,a:mid()});renderLoads();update();};
+$('addW').onclick=()=>{S.loads.push({t:'W',w:5,a:+(S.L*.25).toFixed(2),b:+(S.L*.75).toFixed(2)});renderLoads();update();};
+$('addM').onclick=()=>{S.loads.push({t:'M',M:10,a:mid()});renderLoads();update();};
+/* ---------- bending simulation ---------- */
+const SIM={m:0,vm:0,target:1,auto:false,broken:false,pcs:[],par:[],shake:0,flash:0,bx:0,by:0,xb:0,fos:Infinity,max:3,last:0,age:0};
+const GR=1500,hue=r=>{r=Math.min(Math.max(r,0),1);return `hsl(${190-190*r},90%,${50+10*r}%)`;};
+function simClear(){SIM.broken=false;SIM.pcs=[];SIM.par=[];SIM.shake=0;SIM.flash=0;SIM.age=0;}
+function simSetup(){
+  SIM.fos=R&&R.sig>0?S.Sy/R.sig:Infinity;SIM.max=isFinite(SIM.fos)?Math.max(SIM.fos*1.5,1.5):3;
+  if(SIM.broken){SIM.m=0;SIM.vm=0;}
+  const sl=$('simSl');sl.max=SIM.max;sl.step=SIM.max/500;simClear();SIM.target=Math.min(SIM.target,SIM.max);sl.value=SIM.target;
+}
+$('simSl').oninput=e=>{if(SIM.broken)return;SIM.target=+e.target.value;SIM.auto=false;};
+$('simRamp').onclick=()=>{if(SIM.broken){simClear();SIM.m=0;SIM.vm=0;SIM.target=0;}SIM.auto=true;};
+$('simReset').onclick=()=>{simClear();SIM.auto=false;SIM.m=0;SIM.vm=0;SIM.target=0;$('simSl').value=0;};
+function kpx(){const d=Math.abs(R.Dmax);return d>1e-15?70/(d*(isFinite(SIM.fos)?SIM.fos:1)):0;}
+function beamPts(g,xs){
+  const L=S.L,k=kpx(),P=xs.map(x=>{const i=idxAt(x);return{x:g.x0+x/L*(g.x1-g.x0),y:g.by-R.v[i]*SIM.m*k,r:Math.abs(R.M[i])*SIM.m*R.c/R.I/1e6/S.Sy};});
+  return P.map((p,i)=>{const a=P[Math.max(i-1,0)],b=P[Math.min(i+1,P.length-1)],dx=b.x-a.x,dy=b.y-a.y,n=Math.hypot(dx,dy)||1,nx=-dy/n*7,ny=dx/n*7;
+    return{x:p.x,y:p.y,r:p.r,tx:p.x+nx,ty:p.y+ny,bx:p.x-nx,by:p.y-ny};});
+}
+function strip(c,P,T){
+  const t=T||((x,y)=>[x,y]);
+  for(let i=0;i<P.length-1;i++){const a=P[i],b=P[i+1],q=[t(a.tx,a.ty),t(b.tx,b.ty),t(b.bx,b.by),t(a.bx,a.by)];
+    c.fillStyle=c.strokeStyle=hue((a.r+b.r)/2);c.lineWidth=.8;c.beginPath();c.moveTo(q[0][0],q[0][1]);for(let j=1;j<4;j++)c.lineTo(q[j][0],q[j][1]);c.closePath();c.fill();c.stroke();}
+}
+function tf(p){
+  if(p.mode==='h'){const o=p.P[p.pv],ca=Math.cos(p.al),sa=Math.sin(p.al);return(x,y)=>[o.x+(x-o.x)*ca-(y-o.y)*sa,o.y+(x-o.x)*sa+(y-o.y)*ca];}
+  if(p.mode==='f'){const ca=Math.cos(p.al),sa=Math.sin(p.al);return(x,y)=>[p.cx+(x-p.cx)*ca-(y-p.cy)*sa+p.tx,p.cy+(x-p.cx)*sa+(y-p.cy)*ca+p.ty];}
+  return null;
+}
+function lowest(p){const T=tf(p)||((x,y)=>[x,y]);let m=-1e9;for(const q of p.P)m=Math.max(m,T(q.tx,q.ty)[1],T(q.bx,q.by)[1]);return m;}
+function breakNow(g){
+  const L=S.L,xb=R.xM,xs=[];for(let i=0;i<=90;i++)xs.push(L*i/90);xs.push(xb);
+  const u=[...new Set(xs)].sort((a,b)=>a-b),j=u.indexOf(xb),P=beamPts(g,u);
+  const e0=xb<L*.02,e1=xb>L*.98,left=e1?P:e0?null:P.slice(0,j+1),right=e0?P:e1?null:P.slice(j);
+  const mk=(Q,mode,pv)=>{if(!Q)return;const cx=Q.reduce((s,q)=>s+q.x,0)/Q.length,cy=Q.reduce((s,q)=>s+q.y,0)/Q.length;
+    const o={P:Q,mode,pv,cx,cy,al:0,w:0,vx:0,vy:0,tx:0,ty:0};
+    if(mode==='h'){const pp=Q[pv];o.rc=Math.max(20,Math.hypot(cx-pp.x,cy-pp.y));o.th0=Math.atan2(cy-pp.y,cx-pp.x);o.w=Math.cos(o.th0)*.8;}
+    if(mode==='f'){o.vx=70;o.vy=-140;o.w=1.4;}
+    SIM.pcs.push(o);};
+  if(S.bc==='ss'){mk(left,'h',0);mk(right,'h',right?right.length-1:0);}
+  else if(S.bc==='cant'){if(e0)mk(right,'f');else{mk(left,'s');mk(right,'f');}}
+  else{if(e0)mk(right,'h',right.length-1);else if(e1)mk(left,'h',0);else{mk(left,'s');mk(right,'s');}}
+  const bp=P[j];SIM.bx=bp.x;SIM.by=bp.y;SIM.shake=1;SIM.flash=1;
+  const cols=['#fbbf24','#fb923c','#f87171','#ffffff'];
+  for(let i=0;i<55;i++){const a=Math.random()*6.283,s=120+Math.random()*320;SIM.par.push({x:bp.x,y:bp.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-120,l:.7+Math.random()*.9,ml:1.5,s:2+Math.random()*3,c:cols[i%4]});}
+}
+function simSup(c,g){
+  const y=g.by+7;c.fillStyle='#475569';c.strokeStyle='#64748b';c.lineWidth=1;
+  if(S.bc==='ss'){[g.x0,g.x1].forEach(x=>{c.beginPath();c.moveTo(x,y);c.lineTo(x-12,y+20);c.lineTo(x+12,y+20);c.closePath();c.fill();});}
+  else{(S.bc==='fix'?[g.x0,g.x1]:[g.x0]).forEach(x=>{const d=x===g.x0?-1:1;c.fillRect(d<0?x-10:x,g.by-45,10,90);
+    for(let yy=g.by-42;yy<g.by+44;yy+=9){c.beginPath();c.moveTo(d<0?x-10:x+10,yy);c.lineTo(d<0?x-20:x+20,yy+8);c.stroke();}});}
+}
+function drawSimLoads(c,g,k){
+  const L=S.L,X=x=>g.x0+x/L*(g.x1-g.x0),Y=x=>g.by-R.v[idxAt(x)]*SIM.m*k,len=26+16*Math.min(SIM.m,3);
+  c.font='11px IBM Plex Mono, monospace';c.textAlign='center';
+  S.loads.forEach(l=>{const col=COL[l.t];c.fillStyle=col;c.strokeStyle=col;const a=Math.min(Math.max(l.a,0),L);
+    if(l.t==='P'){const x=X(a),y=Y(a),dn=l.P>=0;if(dn)arrow(c,x,y-7-len,y-7,col);else arrow(c,x,y+7+len,y+7,col);c.fillText(f(l.P*SIM.m,1)+' kN',x,dn?y-len-12:y+len+22);}
+    else if(l.t==='W'){const s=Math.min(l.a,l.b),e=Math.max(l.a,l.b),n=Math.max(2,Math.round((X(e)-X(s))/18)),dn=l.w>=0;
+      for(let i=0;i<=n;i++){const xx=s+(e-s)*i/n,x=X(xx),y=Y(xx);if(dn)arrow(c,x,y-7-len*.7,y-7,col);else arrow(c,x,y+7+len*.7,y+7,col);}
+      c.fillText(f(l.w*SIM.m,1)+' kN/m',X((s+e)/2),Y((s+e)/2)-len*.7-14);}
+    else{const x=X(a),y=Y(a)-28,cw=l.M>=0,t=cw?.6:-2.4,d=cw?1:-1;c.lineWidth=2;c.beginPath();c.arc(x,y,13,-2.4,.6);c.stroke();
+      head(c,x+13*Math.cos(t),y+13*Math.sin(t),-Math.sin(t)*d,Math.cos(t)*d);c.fillText(f(l.M*SIM.m,1)+' kN·m',x,y-20);}
+  });
+}
+function simFrame(ts){
+  requestAnimationFrame(simFrame);
+  const cv=$('sim'),W=cv.clientWidth,H=cv.clientHeight;if(!R||!W)return;
+  const dt=Math.min((ts-(SIM.last||ts))/1000,.05);SIM.last=ts;
+  const dpr=window.devicePixelRatio||1;if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  const c=cv.getContext('2d'),g={W,H,x0:70,x1:W-70,by:H*.36,gy:H-22},k=kpx(),L=S.L;
+  c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,W,H);
+  if(!SIM.broken){
+    if(SIM.auto){SIM.target=Math.min(SIM.max,SIM.target+SIM.max/9*dt);$('simSl').value=SIM.target;}
+    SIM.vm+=(144*(SIM.target-SIM.m)-15.6*SIM.vm)*dt;SIM.m+=SIM.vm*dt;if(SIM.m<0){SIM.m=0;SIM.vm=0;}
+    if(SIM.m>=SIM.fos){SIM.broken=true;SIM.xb=R.xM;SIM.m=SIM.fos;breakNow(g);}
+  }else SIM.age+=dt;
+  const rt=isFinite(SIM.fos)?SIM.m/SIM.fos:0;
+  c.save();let sx=0,sy=0;
+  if(SIM.shake>0){sx=(Math.random()-.5)*16*SIM.shake;sy=(Math.random()-.5)*12*SIM.shake;SIM.shake=Math.max(0,SIM.shake-dt*2.2);}
+  if(!SIM.broken&&rt>.85){const a=(rt-.85)/.15*2.2;sx+=(Math.random()-.5)*a;sy+=(Math.random()-.5)*a;}
+  c.translate(sx,sy);
+  c.fillStyle='#0b1220';c.fillRect(-20,g.gy,W+40,H-g.gy+20);c.strokeStyle='#334155';c.lineWidth=1;c.beginPath();c.moveTo(-20,g.gy);c.lineTo(W+20,g.gy);c.stroke();
+  simSup(c,g);
+  if(!SIM.broken){
+    if(rt>.92){c.shadowColor='#f87171';c.shadowBlur=18*(rt-.92)/.08;}
+    const xs=[];for(let i=0;i<=100;i++)xs.push(L*i/100);strip(c,beamPts(g,xs));c.shadowBlur=0;
+    if(rt>.8){const x=g.x0+R.xM/L*(g.x1-g.x0),y=g.by-R.v[R.kM]*SIM.m*k-7,n=16*(rt-.8)/.2;
+      c.strokeStyle='#fff';c.lineWidth=1.5;c.beginPath();c.moveTo(x-2,y);c.lineTo(x+3,y+n/3);c.lineTo(x-3,y+2*n/3);c.lineTo(x+1,y+n);c.stroke();}
+    drawSimLoads(c,g,k);
+  }else{
+    for(const p of SIM.pcs){
+      if(p.mode==='h'){p.w+=(.75*GR*Math.cos(p.th0+p.al)/p.rc-1.3*p.w)*dt;p.al+=p.w*dt;if(lowest(p)>g.gy){p.al-=p.w*dt;p.w*=-.25;}}
+      else if(p.mode==='f'){p.vy+=GR*dt;p.tx+=p.vx*dt;p.ty+=p.vy*dt;p.al+=p.w*dt;const ov=lowest(p)-g.gy;if(ov>0){p.ty-=ov;p.vy=p.vy>80?-p.vy*.3:0;p.vx*=.85;p.w*=.7;}}
+      strip(c,p.P,tf(p));
+    }
+    SIM.par=SIM.par.filter(p=>p.l>0);
+    for(const p of SIM.par){p.vy+=GR*.7*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.l-=dt;c.globalAlpha=Math.max(0,p.l/p.ml);c.fillStyle=p.c;c.fillRect(p.x,p.y,p.s,p.s);}
+    c.globalAlpha=1;
+    if(SIM.flash>0){const r=20+(1-SIM.flash)*110,gr=c.createRadialGradient(SIM.bx,SIM.by,0,SIM.bx,SIM.by,r);
+      gr.addColorStop(0,`rgba(255,255,255,${SIM.flash})`);gr.addColorStop(1,'rgba(251,191,36,0)');c.fillStyle=gr;c.beginPath();c.arc(SIM.bx,SIM.by,r,0,7);c.fill();SIM.flash=Math.max(0,SIM.flash-dt*2.5);}
+  }
+  c.restore();
+  if(SIM.broken){c.globalAlpha=Math.min(1,SIM.age*2);c.textAlign='center';c.fillStyle='#f87171';c.font='700 22px IBM Plex Sans, sans-serif';
+    c.fillText('FRACTURE at x = '+f(SIM.xb,2)+' m',W/2,34);c.font='12px IBM Plex Mono, monospace';c.fillStyle='#94a3b8';c.fillText('stress reached the yield limit at ×'+f(SIM.fos,2)+' the set load',W/2,54);c.globalAlpha=1;}
+  $('simMul').textContent='×'+f(SIM.m,2);
+  $('simInfo').textContent=SIM.broken?'Fractured at x = '+f(SIM.xb,2)+' m. Press Reset to rebuild the beam, or edit any input.':
+    'σmax = '+f(R.sig*SIM.m,1)+' MPa ('+f(R.sig*SIM.m/S.Sy*100,0)+'% of yield) · max deflection = '+f(Math.abs(R.Dmax)*SIM.m*1e3,2)+' mm real, drawn ×'+f(k/((g.x1-g.x0)/L),0)+' exaggerated · colour = local stress (cyan low, red at yield)';
+}
+requestAnimationFrame(simFrame);
+new ResizeObserver(()=>drawBeam()).observe($('beam').parentElement);
+syncInputs();renderLoads();update();
+</script>
+</body>
+</html>
