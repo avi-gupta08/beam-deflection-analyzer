@@ -151,7 +151,6 @@ The solver was checked against closed-form results (L = 6 m, E = 200 GPa, 100 ×
 - **Ajeet Kumar**, [*Solid Mechanics: APL104*](https://web.iitd.ac.in/~ajeetk/APL104.html), IIT Delhi: the lecture notes and videos used as the course reference
 - Reference book: *Solid Mechanics for Undergraduates* by Ajeet Kumar ([web edition](https://web.iitd.ac.in/~ajeetk/smb/book.html)) and *Strength of Materials* by S. P. Timoshenko
 - Built with [Chart.js](https://www.chartjs.org/), [Tailwind CSS](https://tailwindcss.com/), [Streamlit](https://streamlit.io/), [Plotly](https://plotly.com/python/) and [NumPy](https://numpy.org/)
-- Built with cluad4e
 
 ## Author
 
