@@ -137,7 +137,7 @@ The solver was checked against closed-form results (L = 6 m, E = 200 GPa, 100 ×
 - The cantilever is always fixed at the left end
 - The fracture animation is an illustration, not a fracture-mechanics model
 
-## Possible extensions
+## Possible extensions which i could've included but time was limited
 
 1. Shear stress distribution and a maximum shear stress check
 2. Von Mises and Tresca checks once shear stress is included (Lectures 31–32)
@@ -154,8 +154,4 @@ The solver was checked against closed-form results (L = 6 m, E = 200 GPa, 100 ×
 
 ## Author
 
-**Avi Gupta**, M.Tech (MSME), 1st year
-
-## License
-
-Add a license of your choice before publishing (for example MIT) and place it in a `LICENSE` file.
+**Avi Gupta**, B.Tech (MSME), 1st year
