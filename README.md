@@ -205,7 +205,3 @@ The solver values above were checked numerically. The 3D view, vehicle crossing,
 ## Author
 
 **Avi Gupta**, M.Tech (MSME), 1st year
-
-## License
-
-Add a license of your choice before publishing (for example MIT) and place it in a `LICENSE` file.
