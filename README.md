@@ -2,9 +2,9 @@
 
 An interactive tool for analysing beams under different supports and loads. It plots shear force, bending moment, deflection and stress, checks the result against a yield limit, and includes a **3D bending and fracture simulation** with real-world scenarios, a moving-vehicle bridge crossing, a diving-board animation and a live Mohr's circle.
 
-Built as a **Solid Mechanics (APL104)** course project by **Avi Gupta**, M.Tech (MSME), 1st year. The theory follows the course material taught by **Prof. Prakhar Gupta**, whose notes source is Ajeet Kumar's IIT Delhi APL104 web page (see [Acknowledgements](#acknowledgements)).
+Built as a **Solid Mechanics (APL104)** course project by **Avi Gupta**, M.Tech (MSME), 1st year. The theory follows the course material taught by **Prof. Prakhar Gupta**, notes referred from web page (see [Acknowledgements](#acknowledgements)).
 
-> **Development note:** The concept, requirements and feature specification were defined by Avi Gupta from the APL104 course material. The code was generated with Claude (Anthropic) from his prompts. The solver was checked against closed-form beam formulas (see [Validation](#validation)).
+> **Development note:** The concept, requirements and feature specification were defined by Avi Gupta from the ME2110 course material. The code was generated with Claude (Anthropic) from his prompts. The solver was checked against closed-form beam formulas (see [Validation](#validation)).
 
 ---
 
