@@ -6,6 +6,7 @@
 <title>Beam Bending &amp; Deflection Analyzer</title>
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 :root{color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
 --bg:#09090b;--panel:#111827;--panel2:#0f172a;--line:#1e293b;--tx:#e2e8f0;--mut:#94a3b8;
@@ -34,6 +35,7 @@ html,body{background:var(--bg);color:var(--tx);font-family:"IBM Plex Sans",ui-sa
 </header>
 <main class="grid gap-4 p-4 lg:grid-cols-[370px_1fr]">
 <aside class="space-y-3">
+  <div class="panel p-3"><div class="h" style="color:var(--s)">Real-world simulators</div><select class="inp" id="scn" aria-label="Scenario"></select><p class="text-[11px] mt-2" id="scnNote" style="color:var(--mut)">Pick a ready-made engineering case. It sets the supports, section, material and loads, then try the 3D simulation.</p></div>
   <div class="panel p-3">
     <div class="h">Boundary condition</div>
     <div class="seg flex" id="bc">
@@ -67,6 +69,7 @@ html,body{background:var(--bg);color:var(--tx);font-family:"IBM Plex Sans",ui-sa
     <div class="grid grid-cols-3 gap-2 mb-3">
       <button class="btn" id="addP">+ Point</button><button class="btn" id="addW">+ UDL</button><button class="btn" id="addM">+ Moment</button>
     </div>
+    <div class="flex gap-2 mb-3"><select class="inp" id="lib" aria-label="Real-world load"></select><button class="btn" id="addLib">Add</button></div>
     <div id="loads" class="space-y-2"></div>
     <p class="text-[11px] mt-2" style="color:var(--mut)">Positive: point and UDL act downward, moments act clockwise. Use a negative value to reverse.</p>
   </div>
@@ -75,7 +78,7 @@ html,body{background:var(--bg);color:var(--tx);font-family:"IBM Plex Sans",ui-sa
 <section class="space-y-3 min-w-0">
   <div id="status" class="rounded-lg px-4 py-3 text-sm font-medium"></div>
   <div class="grid grid-cols-2 xl:grid-cols-4 gap-3" id="cards"></div>
-  <div class="panel p-3"><div class="flex flex-wrap items-center justify-between gap-2 mb-2"><div class="h !mb-0" style="color:var(--s)">Live bending simulation</div><div class="flex gap-2"><button class="btn" id="simRamp">Ramp load to failure</button><button class="btn" id="simReset">Reset</button></div></div><div class="flex items-center gap-3 mb-2"><label class="lbl !mb-0 whitespace-nowrap" for="simSl">Load multiplier</label><input id="simSl" type="range" min="0" max="3" step="0.01" value="1" class="w-full"><span class="num text-sm w-16 text-right" id="simMul">×0.00</span></div><div style="height:300px"><canvas id="sim" class="block w-full h-full"></canvas></div><div class="num text-[11px] mt-1" style="color:var(--mut)" id="simInfo"></div></div>
+  <div class="panel p-3"><div class="flex flex-wrap items-center justify-between gap-2 mb-2"><div class="h !mb-0" style="color:var(--s)">Live bending simulation</div><div class="flex gap-2"><button class="btn" id="simRamp">Ramp load to failure</button><button class="btn" id="simReset">Reset</button><button class="btn" id="simView">View: 3D</button></div></div><div class="flex items-center gap-3 mb-2"><label class="lbl !mb-0 whitespace-nowrap" for="simSl">Load multiplier</label><input id="simSl" type="range" min="0" max="3" step="0.01" value="1" class="w-full"><span class="num text-sm w-16 text-right" id="simMul">×0.00</span></div><div class="relative" style="height:380px"><canvas id="sim" class="block w-full h-full absolute inset-0" style="opacity:0"></canvas><canvas id="sim3" class="block w-full h-full absolute inset-0" style="touch-action:none;cursor:grab"></canvas><div class="absolute left-2 bottom-1 text-[10px] pointer-events-none" style="color:var(--mut)">Drag to orbit · scroll to zoom</div></div><div class="num text-[11px] mt-1" style="color:var(--mut)" id="simInfo"></div></div>
   <div class="panel p-3"><div class="h">Beam schematic</div><div style="height:195px"><canvas id="beam" class="w-full h-full"></canvas></div></div>
   <div class="panel p-3"><div class="h" style="color:var(--v)">Shear force V(x)</div><div style="height:185px"><canvas id="cV"></canvas></div></div>
   <div class="panel p-3"><div class="h" style="color:var(--m)">Bending moment M(x)</div><div style="height:185px"><canvas id="cM"></canvas></div></div>
@@ -261,7 +264,7 @@ function update(){
     row('R at x = 0',kn(r.A),'kN ↑')+row('M at x = 0',kn(r.MA),'kN·m')+row('R at x = L',kn(r.B),'kN ↑')+row('M at x = L',kn(r.MB),'kN·m'))+
     `<div class="text-[11px]" style="color:var(--mut)">Total applied downward force: ${kn(R.Ftot)} kN</div>`;
   const s=section();$('secinfo').textContent=`I = ${(s.I*1e12/1e6).toExponential(3)}×10⁶ mm⁴ · c = ${f(s.c*1e3,1)} mm · EI = ${f(R.EI/1e3,1)} kN·m²`;
-  drawBeam();updStress();simSetup();
+  drawBeam();updStress();simSetup();build3d();
 }
 
 /* ---------- inputs ---------- */
@@ -392,12 +395,113 @@ function simFrame(ts){
       gr.addColorStop(0,`rgba(255,255,255,${SIM.flash})`);gr.addColorStop(1,'rgba(251,191,36,0)');c.fillStyle=gr;c.beginPath();c.arc(SIM.bx,SIM.by,r,0,7);c.fill();SIM.flash=Math.max(0,SIM.flash-dt*2.5);}
   }
   c.restore();
+  draw3d(g,dt);
   if(SIM.broken){c.globalAlpha=Math.min(1,SIM.age*2);c.textAlign='center';c.fillStyle='#f87171';c.font='700 22px IBM Plex Sans, sans-serif';
     c.fillText('FRACTURE at x = '+f(SIM.xb,2)+' m',W/2,34);c.font='12px IBM Plex Mono, monospace';c.fillStyle='#94a3b8';c.fillText('stress reached the yield limit at ×'+f(SIM.fos,2)+' the set load',W/2,54);c.globalAlpha=1;}
   $('simMul').textContent='×'+f(SIM.m,2);
   $('simInfo').textContent=SIM.broken?'Fractured at x = '+f(SIM.xb,2)+' m. Press Reset to rebuild the beam, or edit any input.':
     'σmax = '+f(R.sig*SIM.m,1)+' MPa ('+f(R.sig*SIM.m/S.Sy*100,0)+'% of yield) · max deflection = '+f(Math.abs(R.Dmax)*SIM.m*1e3,2)+' mm real, drawn ×'+f(k/((g.x1-g.x0)/L),0)+' exaggerated · colour = local stress (cyan low, red at yield)';
 }
+/* ---------- real-world scenarios and load library ---------- */
+const RHO={Steel:7850,Aluminum:2700,Wood:600,Custom:2400};
+const cl=(v,L)=>Math.min(Math.max(v,0),L);
+const LIB=[
+ ['Person (0.8 kN)',L=>[{t:'P',P:.8,a:L/2,kind:'person'}]],
+ ['Car, 2 axles (7.4 kN each)',L=>[{t:'P',P:7.4,a:cl(L/2-1.35,L),kind:'vehicle'},{t:'P',P:7.4,a:cl(L/2+1.35,L),kind:'vehicle'}]],
+ ['Loaded truck, 3 axles (30/80/80 kN)',L=>[{t:'P',P:30,a:cl(L/2-3,L),kind:'vehicle'},{t:'P',P:80,a:cl(L/2+1.2,L),kind:'vehicle'},{t:'P',P:80,a:cl(L/2+2.5,L),kind:'vehicle'}]],
+ ['Machine or motor (5 kN)',L=>[{t:'P',P:5,a:L/2,kind:'machine'}]],
+ ['Crane hoist payload (50 kN)',L=>[{t:'P',P:50,a:L/2,kind:'machine'}]],
+ ['Crowd or occupancy (5 kN/m)',L=>[{t:'W',w:5,a:0,b:L,kind:'crowd'}]],
+ ['Snow (1.5 kN/m)',L=>[{t:'W',w:1.5,a:0,b:L,kind:'snow'}]],
+ ['Stored goods or books (3 kN/m)',L=>[{t:'W',w:3,a:L*.2,b:L*.8,kind:'goods'}]],
+ ['Wind or aerodynamic lift (upward 4 kN/m)',L=>[{t:'W',w:-4,a:0,b:L,kind:'lift'}]],
+ ['Self-weight of this beam',L=>[{t:'W',w:+(RHO[$('mat').value]*9.81*section().A/1e3).toFixed(3),a:0,b:L,kind:'slab'}]],
+ ['Motor torque on shaft (10 kN·m)',L=>[{t:'M',M:10,a:L/2}]]];
+const SCN=[
+ ['Highway bridge girder with truck','12 m steel girder carrying its deck plus a two-axle truck. Raise the multiplier to see the overload margin.',{bc:'ss',L:12,sec:'rect',b:200,h:400,mat:'Steel',loads:[{t:'W',w:6,a:0,b:12,kind:'slab'},{t:'P',P:60,a:4,kind:'vehicle'},{t:'P',P:100,a:8.2,kind:'vehicle'}]}],
+ ['Diving board with swimmer','Aluminum cantilever with a person at the tip. Large flexible deflection but low stress.',{bc:'cant',L:2.5,sec:'rect',b:500,h:40,mat:'Aluminum',loads:[{t:'P',P:.8,a:2.5,kind:'person'}]}],
+ ['Bookshelf under books','Wooden shelf board, simply supported. Watch the sag and the low factor of safety.',{bc:'ss',L:.9,sec:'rect',b:250,h:20,mat:'Wood',loads:[{t:'W',w:3,a:0,b:.9,kind:'goods'}]}],
+ ['Overhead crane girder','10 m steel girder with self-weight and a 80 kN hoist load near the right side.',{bc:'ss',L:10,sec:'rect',b:250,h:500,mat:'Steel',loads:[{t:'W',w:3,a:0,b:10,kind:'slab'},{t:'P',P:80,a:6,kind:'machine'}]}],
+ ['Concrete balcony without rebar','Plain concrete is weak in tension (about 4 MPa). Shows why real balconies need steel reinforcement.',{bc:'cant',L:2,sec:'rect',b:1000,h:150,mat:'Custom',E:30,Sy:4,loads:[{t:'W',w:7,a:0,b:2,kind:'crowd'}]}],
+ ['Aircraft wing spar','Aluminum cantilever. Lift acts upward along the span, engine weight acts down.',{bc:'cant',L:5,sec:'circ',d:350,mat:'Aluminum',loads:[{t:'W',w:-8,a:0,b:5,kind:'lift'},{t:'P',P:15,a:2,kind:'machine'}]}],
+ ['Timber floor joist','4 m wooden joist under floor occupancy and one person at midspan.',{bc:'ss',L:4,sec:'rect',b:50,h:200,mat:'Wood',loads:[{t:'W',w:2,a:0,b:4,kind:'crowd'},{t:'P',P:.8,a:2,kind:'person'}]}],
+ ['Roof beam under snow','5 m wooden roof beam carrying snow load.',{bc:'ss',L:5,sec:'rect',b:100,h:250,mat:'Wood',loads:[{t:'W',w:1.5,a:0,b:5,kind:'snow'}]}],
+ ['Pipe-rack beam (fixed ends)','Steel bar clamped at both ends with a valve at midspan: statically indeterminate.',{bc:'fix',L:6,sec:'circ',d:200,mat:'Steel',loads:[{t:'W',w:2,a:0,b:6,kind:'goods'},{t:'P',P:5,a:3,kind:'machine'}]}]];
+function applyScn(i){const c=SCN[i][2],m=MAT[c.mat]||[c.E,c.Sy];
+ Object.assign(S,{bc:c.bc,L:c.L,sec:c.sec,b:c.b||S.b,h:c.h||S.h,d:c.d||S.d,E:m[0],Sy:m[1]});$('mat').value=c.mat;
+ S.loads=JSON.parse(JSON.stringify(c.loads));SIM.auto=false;SIM.target=1;SIM.m=0;SIM.vm=0;syncInputs();renderLoads();update();}
+$('scn').innerHTML='<option value="-1">Choose a scenario…</option>'+SCN.map((s,i)=>`<option value="${i}">${s[0]}</option>`).join('');
+$('scn').onchange=e=>{const i=+e.target.value;if(i<0)return;$('scnNote').textContent=SCN[i][1];applyScn(i);};
+$('lib').innerHTML=LIB.map((s,i)=>`<option value="${i}">${s[0]}</option>`).join('');
+$('addLib').onclick=()=>{S.loads.push(...LIB[+$('lib').value][1](S.L).map(x=>({...x})));renderLoads();update();};
+
+/* ---------- 3D view (three.js) ---------- */
+const V3={ok:typeof THREE!=='undefined',on:true,az:.45,el:.3,dist:17,props:[],segs:[],w:0,h:0};
+const KC={person:'#f59e0b',vehicle:'#38bdf8',machine:'#a855f7',crowd:'#f472b6',snow:'#e2e8f0',goods:'#fb923c',slab:'#94a3b8',lift:'#67e8f9'};
+function init3d(){
+  try{const cv=$('sim3');V3.r=new THREE.WebGLRenderer({canvas:cv,antialias:true});V3.r.setPixelRatio(window.devicePixelRatio||1);V3.r.setClearColor(0x0b1220);}catch(e){V3.ok=false;return;}
+  V3.sc=new THREE.Scene();V3.cam=new THREE.PerspectiveCamera(40,1,.1,300);
+  V3.sc.add(new THREE.AmbientLight(0xffffff,.6));const dl=new THREE.DirectionalLight(0xffffff,.9);dl.position.set(6,12,9);V3.sc.add(dl);
+  V3.grp=new THREE.Group();V3.pr=new THREE.Group();V3.sc.add(V3.grp,V3.pr);
+  V3.gr=new THREE.GridHelper(60,60,0x475569,0x1e293b);V3.sc.add(V3.gr);
+  V3.pts=new THREE.Points(new THREE.BufferGeometry().setAttribute('position',new THREE.BufferAttribute(new Float32Array(180),3)),new THREE.PointsMaterial({color:0xfbbf24,size:.2}));V3.pts.frustumCulled=false;V3.sc.add(V3.pts);
+  const cv=$('sim3');let dr=null;
+  cv.onpointerdown=e=>{dr=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing';};
+  cv.onpointerup=()=>{dr=null;cv.style.cursor='grab';};
+  cv.onpointermove=e=>{if(!dr)return;V3.az-=(e.clientX-dr[0])*.008;V3.el=Math.min(1.4,Math.max(-.2,V3.el+(e.clientY-dr[1])*.006));dr=[e.clientX,e.clientY];};
+  cv.onwheel=e=>{e.preventDefault();V3.dist=Math.min(45,Math.max(6,V3.dist*(1+e.deltaY*.001)));};
+}
+function build3d(){
+  if(!V3.ok)return;if(!V3.sc)init3d();if(!V3.ok)return;
+  [V3.grp,V3.pr].forEach(g=>{while(g.children.length)g.remove(g.children[0]);});V3.props=[];V3.segs=[];
+  const rect=S.sec==='rect',th=Math.max(.22,(rect?S.h:S.d)/1e3/S.L*10),wd=Math.min(3,Math.max(.22,(rect?S.b:S.d)/1e3/S.L*10));
+  const geo=rect?new THREE.BoxGeometry(1,th,wd):new THREE.CylinderGeometry(th/2,th/2,1,18).rotateZ(Math.PI/2);
+  for(let i=0;i<100;i++){const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({roughness:.45,metalness:.3}));m.visible=false;V3.grp.add(m);V3.segs.push(m);}
+  const sup=new THREE.MeshStandardMaterial({color:0x64748b});
+  if(S.bc==='ss')[-5,5].forEach(x=>{const c=new THREE.Mesh(new THREE.ConeGeometry(.55,.9,4),sup);c.position.set(x,-th/2-.45,0);c.rotation.y=Math.PI/4;V3.grp.add(c);});
+  else(S.bc==='fix'?[-5.3,5.3]:[-5.3]).forEach(x=>{const w=new THREE.Mesh(new THREE.BoxGeometry(.6,3,wd+1.6),sup);w.position.set(x,0,0);V3.grp.add(w);});
+  const add=(m,xm,off,nr)=>{V3.pr.add(m);V3.props.push({m,xm,off,nr,fy:0,vy:0});};
+  S.loads.forEach(l=>{
+    const col=new THREE.Color(KC[l.kind]||(l.t==='M'?'#c084fc':'#fb923c')),mat=new THREE.MeshStandardMaterial({color:col,roughness:.6});
+    if(l.t==='P'){const k=l.kind||'machine',hg=k==='person'?.9:k==='vehicle'?.35:.6,s=l.P>=0?1:-1;
+      add(new THREE.Mesh(k==='person'?new THREE.CylinderGeometry(.14,.14,hg,12):new THREE.BoxGeometry(.7,hg,Math.min(wd+.3,1.6)),mat),l.a,s*(th/2+hg/2));
+      add(new THREE.ArrowHelper(new THREE.Vector3(0,-s,0),new THREE.Vector3(),1.3,col.getHex(),.4,.25),l.a,s*(th/2+hg+1.3),true);}
+    else if(l.t==='W'){const a=Math.min(l.a,l.b),b=Math.max(l.a,l.b),n=Math.max(3,Math.round((b-a)/S.L*28)),hh=.12+Math.min(.5,Math.abs(l.w)*.05);
+      for(let i=0;i<n;i++)add(new THREE.Mesh(new THREE.BoxGeometry(10*(b-a)/S.L/n*.85,hh,wd*.9),mat),a+(b-a)*(i+.5)/n,(l.w>=0?1:-1)*(th/2+hh/2));}
+    else add(new THREE.Mesh(new THREE.TorusGeometry(.55,.06,8,24,4.4),mat),l.a,1.2,true);
+  });
+}
+function draw3d(g,dt){
+  if(!V3.ok||!V3.on||!V3.sc)return;
+  const cv=$('sim3'),W=cv.clientWidth,H=cv.clientHeight;if(!W)return;
+  if(V3.w!==W||V3.h!==H){V3.r.setSize(W,H,false);V3.cam.aspect=W/H;V3.cam.updateProjectionMatrix();V3.w=W;V3.h=H;}
+  const s=10/(g.x1-g.x0),Wx=px=>(px-g.x0)*s-5,Wy=py=>-(py-g.by)*s,L=S.L,kk=kpx(),gyW=Wy(g.gy);
+  let lines;
+  if(!SIM.broken){const xs=[];for(let i=0;i<=60;i++)xs.push(L*i/60);lines=[beamPts(g,xs).map(q=>[q.x,q.y,q.r])];}
+  else lines=SIM.pcs.map(p=>{const T=tf(p)||((x,y)=>[x,y]);return p.P.map(q=>{const t=T(q.x,q.y);return[t[0],t[1],q.r];});});
+  let n=0;
+  for(const ln of lines)for(let i=0;i<ln.length-1&&n<V3.segs.length;i++){
+    const a=ln[i],b=ln[i+1],ax=Wx(a[0]),ay=Wy(a[1]),bx=Wx(b[0]),by=Wy(b[1]),m=V3.segs[n++],r=Math.min(1,(a[2]+b[2])/2);
+    m.visible=true;m.position.set((ax+bx)/2,(ay+by)/2,0);m.rotation.z=Math.atan2(by-ay,bx-ax);m.scale.x=Math.hypot(bx-ax,by-ay)*1.05;
+    m.material.color.setHSL((190-190*r)/360,.9,.5+.1*r);}
+  while(n<V3.segs.length)V3.segs[n++].visible=false;
+  const yC=x=>Wy(g.by-R.v[idxAt(x)]*SIM.m*kk);
+  for(const p of V3.props){
+    const d=.01*L,x1=Math.min(p.xm+d,L),x0=Math.max(p.xm-d,0),y0=yC(p.xm),ang=Math.atan2(yC(x1)-yC(x0),(x1-x0)/L*10);
+    const y=y0+p.off*Math.cos(ang),x=p.xm/L*10-5-p.off*Math.sin(ang);
+    if(SIM.broken){p.vy-=20*dt;p.fy+=p.vy*dt;if(y+p.fy<gyW+.2){p.fy=gyW+.2-y;p.vy=0;}}else{p.fy=0;p.vy=0;}
+    p.m.position.set(x,y+p.fy,0);if(!p.nr)p.m.rotation.z=ang;else if(p.m.type==='ArrowHelper')p.m.visible=!SIM.broken;
+  }
+  const pa=V3.pts.geometry.attributes.position;
+  for(let i=0;i<60;i++){const q=SIM.par[i];pa.setXYZ(i,q?Wx(q.x):0,q?Wy(q.y):-99,q?(i%7-3)*.12:0);}pa.needsUpdate=true;
+  V3.gr.position.y=gyW;
+  const sh=SIM.shake>0?SIM.shake*.35:0,cd=V3.dist;
+  V3.cam.position.set(cd*Math.cos(V3.el)*Math.sin(V3.az)+(Math.random()-.5)*sh,-1+cd*Math.sin(V3.el)+(Math.random()-.5)*sh,cd*Math.cos(V3.el)*Math.cos(V3.az));
+  V3.cam.lookAt(0,-1,0);V3.r.render(V3.sc,V3.cam);
+}
+$('simView').onclick=()=>{V3.on=!V3.on;$('sim3').style.display=V3.on?'block':'none';$('sim').style.opacity=V3.on?0:1;$('simView').textContent='View: '+(V3.on?'3D':'2D');};
+if(!V3.ok){V3.on=false;$('sim3').style.display='none';$('sim').style.opacity=1;$('simView').textContent='View: 2D (3D unavailable)';}
+
 requestAnimationFrame(simFrame);
 new ResizeObserver(()=>drawBeam()).observe($('beam').parentElement);
 syncInputs();renderLoads();update();
