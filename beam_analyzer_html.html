@@ -31,7 +31,7 @@ html,body{background:var(--bg);color:var(--tx);font-family:"IBM Plex Sans",ui-sa
 <body>
 <header class="px-4 py-3 border-b" style="border-color:var(--line)">
   <h1 class="text-lg font-semibold">Beam Bending &amp; Deflection Analyzer</h1>
-  <p class="text-xs" style="color:var(--mut)">Solid Mechanics · Euler–Bernoulli beam · hover any chart to read V, M, v and σ at that x</p>
+  <p class="text-xs" style="color:var(--mut)">Mechanics of Solids (ME2110) · Euler–Bernoulli beam · hover any chart to read V, M, v and σ at that x</p>
 </header>
 <main class="grid gap-4 p-4 lg:grid-cols-[370px_1fr]">
 <aside class="space-y-3">
@@ -78,20 +78,20 @@ html,body{background:var(--bg);color:var(--tx);font-family:"IBM Plex Sans",ui-sa
 <section class="space-y-3 min-w-0">
   <div id="status" class="rounded-lg px-4 py-3 text-sm font-medium"></div>
   <div class="grid grid-cols-2 xl:grid-cols-4 gap-3" id="cards"></div>
-  <div class="panel p-3"><div class="flex flex-wrap items-center justify-between gap-2 mb-2"><div class="h !mb-0" style="color:var(--s)">Live bending simulation</div><div class="flex gap-2"><button class="btn" id="simRamp">Ramp load to failure</button><button class="btn" id="simReset">Reset</button><button class="btn" id="simCross">Animate crossing</button><button class="btn" id="simDive">Dive</button><button class="btn" id="simView">View: 3D</button></div></div><div class="flex items-center gap-3 mb-2"><label class="lbl !mb-0 whitespace-nowrap" for="simSl">Load multiplier</label><input id="simSl" type="range" min="0" max="3" step="0.01" value="1" class="w-full"><span class="num text-sm w-16 text-right" id="simMul">×0.00</span></div><div class="relative" style="height:380px"><canvas id="sim" class="block w-full h-full absolute inset-0" style="opacity:0"></canvas><canvas id="sim3" class="block w-full h-full absolute inset-0" style="touch-action:none;cursor:grab"></canvas><div class="absolute left-2 bottom-1 text-[10px] pointer-events-none" style="color:var(--mut)">Drag to orbit · scroll to zoom</div></div><div class="num text-[11px] mt-1" style="color:var(--mut)" id="simInfo"></div></div>
-  <div class="panel p-3"><div class="h">Beam schematic</div><div style="height:195px"><canvas id="beam" class="w-full h-full"></canvas></div></div>
-  <div class="panel p-3"><div class="h" style="color:var(--v)">Shear force V(x)</div><div style="height:185px"><canvas id="cV"></canvas></div></div>
-  <div class="panel p-3"><div class="h" style="color:var(--m)">Bending moment M(x)</div><div style="height:185px"><canvas id="cM"></canvas></div></div>
-  <div class="panel p-3"><div class="h" style="color:var(--d)">Deflection v(x) (negative = downward)</div><div style="height:185px"><canvas id="cD"></canvas></div></div>
+  <div class="panel p-3"><div class="flex flex-wrap items-center justify-between gap-2 mb-2"><div class="h !mb-0" style="color:var(--s)">Live bending simulation: σ = −M·y/I, fails when m·σmax ≥ σy</div><div class="flex gap-2"><button class="btn" id="simRamp">Ramp load to failure</button><button class="btn" id="simReset">Reset</button><button class="btn" id="simCross">Animate crossing</button><button class="btn" id="simDive">Dive</button><button class="btn" id="simView">View: 3D</button></div></div><div class="flex items-center gap-3 mb-2"><label class="lbl !mb-0 whitespace-nowrap" for="simSl">Load multiplier</label><input id="simSl" type="range" min="0" max="3" step="0.01" value="1" class="w-full"><span class="num text-sm w-16 text-right" id="simMul">×0.00</span></div><div class="relative" style="height:380px"><canvas id="sim" class="block w-full h-full absolute inset-0" style="opacity:0"></canvas><canvas id="sim3" class="block w-full h-full absolute inset-0" style="touch-action:none;cursor:grab"></canvas><div class="absolute left-2 bottom-1 text-[10px] pointer-events-none" style="color:var(--mut)">Drag: orbit · Scroll: zoom · Blocks = distributed load (UDL) · cube + arrow = point load</div></div><div class="num text-[11px] mt-1" style="color:var(--mut)" id="simInfo"></div></div>
+  <div class="panel p-3"><div class="h">Beam schematic: ΣFy = 0, ΣM = 0 → reactions</div><div style="height:195px"><canvas id="beam" class="w-full h-full"></canvas></div></div>
+  <div class="panel p-3"><div class="h" style="color:var(--v)">Shear force: V(x) = ΣF↑ (left of x),  dV/dx = −w</div><div style="height:185px"><canvas id="cV"></canvas></div></div>
+  <div class="panel p-3"><div class="h" style="color:var(--m)">Bending moment: M(x) = Σ F·d (left of x),  dM/dx = V</div><div style="height:185px"><canvas id="cM"></canvas></div></div>
+  <div class="panel p-3"><div class="h" style="color:var(--d)">Deflection: EI·v″ = M(x)  (negative = downward)</div><div style="height:185px"><canvas id="cD"></canvas></div></div>
   <div class="grid md:grid-cols-2 gap-3">
     <div class="panel p-3"><div class="h" style="color:var(--s)">Bending stress across section, σ = −M·y / I</div><div class="text-[11px] mb-1 num" style="color:var(--mut)" id="stnote"></div><div style="height:270px"><canvas id="cS"></canvas></div>
-      <div class="h mt-3" style="color:var(--m)">Mohr’s circle at the selected height y</div><div class="num text-[11px] mb-1" style="color:var(--mut)" id="mohrNote">Click the stress chart above to pick a height y.</div><div style="height:240px"><canvas id="mohr" class="block w-full h-full"></canvas></div></div>
+      <div class="h mt-3" style="color:var(--m)">Mohr’s circle: σ₁,₂ = σx/2 ± √((σx/2)² + τxy²), with τxy = 0 (bending only)</div><div class="num text-[11px] mb-1" style="color:var(--mut)" id="mohrNote">Click the stress chart above to pick a height y.</div><div style="height:240px"><canvas id="mohr" class="block w-full h-full"></canvas></div></div>
     <div class="panel p-3"><div class="h">Readout at cursor</div><div id="read" class="num text-sm space-y-1"></div>
       <div class="h mt-4">Support reactions</div><div id="react" class="num text-sm space-y-1"></div></div>
   </div>
 </section>
 </main>
-<footer class="text-center text-xs py-5 border-t" style="color:var(--mut);border-color:var(--line)">Made by <span style="color:var(--tx);font-weight:600">Avi Gupta</span> · MSME, 1st year · Solid Mechanics (APL104)</footer>
+<footer class="text-center text-xs py-5 border-t" style="color:var(--mut);border-color:var(--line)">Made by <span style="color:var(--tx);font-weight:600">Avi Gupta</span> · MSME, 1st year · Mechanics of Solids (ME2110)</footer>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -309,8 +309,8 @@ function simSetup(){
 }
 $('simSl').oninput=e=>{if(SIM.broken)return;SIM.target=+e.target.value;SIM.auto=false;};
 $('simRamp').onclick=()=>{if(SIM.broken){simClear();SIM.m=0;SIM.vm=0;SIM.target=0;}SIM.auto=true;};
-$('simReset').onclick=()=>{simClear();SIM.auto=false;SIM.m=0;SIM.vm=0;SIM.target=0;$('simSl').value=0;};
-function kpx(){if(VEH.on)return VEH.kfix;if(DIVE.on)return 45/(Math.abs(R.Dmax)||1e-9);const d=Math.abs(R.Dmax);return d>1e-15?70/(d*(isFinite(SIM.fos)?SIM.fos:1)):0;}
+$('simReset').onclick=()=>{if(VEH.base){R=VEH.base;VEH.base=null;setCharts(R);}VEH.on=false;VEH.fall=false;VEH.hs=false;DIVE.on=false;simClear();SIM.auto=false;SIM.m=0;SIM.vm=0;SIM.target=0;$('simSl').value=0;};
+function kpx(){if(VEH.on||VEH.fall)return VEH.kfix;if(DIVE.on)return 45/(Math.abs(R.Dmax)||1e-9);const d=Math.abs(R.Dmax);return d>1e-15?70/(d*(isFinite(SIM.fos)?SIM.fos:1)):0;}
 function beamPts(g,xs){
   const L=S.L,k=kpx(),P=xs.map(x=>{const i=idxAt(x);return{x:g.x0+x/L*(g.x1-g.x0),y:g.by-R.v[i]*SIM.m*k,r:Math.abs(R.M[i])*SIM.m*R.c/R.I/1e6/S.Sy};});
   return P.map((p,i)=>{const a=P[Math.max(i-1,0)],b=P[Math.min(i+1,P.length-1)],dx=b.x-a.x,dy=b.y-a.y,n=Math.hypot(dx,dy)||1,nx=-dy/n*7,ny=dx/n*7;
@@ -399,7 +399,7 @@ function simFrame(ts){
       gr.addColorStop(0,`rgba(255,255,255,${SIM.flash})`);gr.addColorStop(1,'rgba(251,191,36,0)');c.fillStyle=gr;c.beginPath();c.arc(SIM.bx,SIM.by,r,0,7);c.fill();SIM.flash=Math.max(0,SIM.flash-dt*2.5);}
   }
   c.restore();
-  crossStep(dt);diveStep(dt);draw3d(g,dt);
+  crossStep2(dt,g);diveStep(dt);draw3d(g,dt);
   if(SIM.broken){c.globalAlpha=Math.min(1,SIM.age*2);c.textAlign='center';c.fillStyle='#f87171';c.font='700 22px IBM Plex Sans, sans-serif';
     c.fillText('FRACTURE at x = '+f(SIM.xb,2)+' m',W/2,34);c.font='12px IBM Plex Mono, monospace';c.fillStyle='#94a3b8';c.fillText('stress reached the yield limit at ×'+f(SIM.fos,2)+' the set load',W/2,54);c.globalAlpha=1;}
   $('simMul').textContent='×'+f(SIM.m,2);
@@ -458,6 +458,7 @@ function init3d(){
 function build3d(){
   if(!V3.ok)return;if(!V3.sc)init3d();if(!V3.ok)return;
   [V3.grp,V3.pr].forEach(g=>{while(g.children.length)g.remove(g.children[0]);});V3.props=[];V3.segs=[];
+  if(V3.tk){V3.sc.remove(V3.tk.g);V3.sc.remove(V3.tk.road);V3.tk=null;}
   const rect=S.sec==='rect',th=Math.max(.22,(rect?S.h:S.d)/1e3/S.L*10),wd=Math.min(3,Math.max(.22,(rect?S.b:S.d)/1e3/S.L*10));
   V3.th=th;V3.wd=wd;const geo=rect?new THREE.BoxGeometry(1,th,wd):new THREE.CylinderGeometry(th/2,th/2,1,18).rotateZ(Math.PI/2);
   for(let i=0;i<100;i++){const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({roughness:.45,metalness:.3}));m.visible=false;V3.grp.add(m);V3.segs.push(m);}
@@ -485,7 +486,7 @@ function draw3d(g,dt){
   else lines=SIM.pcs.map(p=>{const T=tf(p)||((x,y)=>[x,y]);return p.P.map(q=>{const t=T(q.x,q.y);return[t[0],t[1],q.r];});});
   let n=0;
   for(const ln of lines)for(let i=0;i<ln.length-1&&n<V3.segs.length;i++){
-    const a=ln[i],b=ln[i+1],ax=Wx(a[0]),ay=Wy(a[1]),bx=Wx(b[0]),by=Wy(b[1]),m=V3.segs[n++],r=Math.min(1,(a[2]+b[2])/2);
+    const a=ln[i],b=ln[i+1],ax=Wx(a[0]),ay=Wy(a[1]),bx=Wx(b[0]),by=Wy(b[1]),m=V3.segs[n++],r=Math.min(1,Math.abs((a[2]+b[2])/2)*(DIVE.on&&isFinite(SIM.fos)?SIM.fos/1.9:1));
     m.visible=true;m.position.set((ax+bx)/2,(ay+by)/2,0);m.rotation.z=Math.atan2(by-ay,bx-ax);m.scale.x=Math.hypot(bx-ax,by-ay)*1.05;
     m.material.color.setHSL((190-190*r)/360,.9,.5+.1*r);}
   while(n<V3.segs.length)V3.segs[n++].visible=false;
@@ -493,9 +494,10 @@ function draw3d(g,dt){
   for(const p of V3.props){
     const d=.01*L,x1=Math.min(p.xm+d,L),x0=Math.max(p.xm-d,0),y0=yC(p.xm),ang=Math.atan2(yC(x1)-yC(x0),(x1-x0)/L*10);
     const y=y0+p.off*Math.cos(ang),x=p.xm/L*10-5-p.off*Math.sin(ang);
-    if(SIM.broken){p.vy-=20*dt;p.fy+=p.vy*dt;if(y+p.fy<gyW+.2){p.fy=gyW+.2-y;p.vy=0;}}else{p.fy=0;p.vy=0;}
+    if(SIM.broken){p.vy-=20*dt;p.fy+=p.vy*dt;if(y+p.fy<gyW+.2){p.fy=gyW+.2-y;p.vy=0;p.land=(p.land||0)+dt;}}else{p.fy=0;p.vy=0;p.land=0;}
     p.m.position.set(x,y+p.fy,0);if(!p.nr)p.m.rotation.z=ang;
-    if(p.m.type==='ArrowHelper')p.m.visible=!SIM.broken&&!DIVE.on&&!VEH.on;else{const h=p.m.material&&p.m.material.color?p.m.material.color.getHex():0;p.m.visible=!((VEH.on&&h===0x38bdf8)||(DIVE.on&&h===0xf59e0b));}
+    if(p.m.type==='ArrowHelper')p.m.visible=!SIM.broken&&!DIVE.on&&!VEH.hs;else{const h=p.m.material&&p.m.material.color?p.m.material.color.getHex():0;p.m.visible=!((VEH.hs&&h===0x38bdf8)||(DIVE.on&&h===0xf59e0b));}
+    if((p.land||0)>.9)p.m.visible=false;
   }
   const pa=V3.pts.geometry.attributes.position;
   for(let i=0;i<60;i++){const q=SIM.par[i];pa.setXYZ(i,q?Wx(q.x):0,q?Wy(q.y):-99,q?(i%7-3)*.12:0);}
@@ -523,7 +525,7 @@ function setCharts(Q){
 function envClear(){
   [chV,chM].forEach(c=>{c.$env=null;c.options.scales.y.min=undefined;c.options.scales.y.max=undefined;});
   chD.options.scales.y.min=undefined;chD.options.scales.y.max=undefined;[chV,chM,chD].forEach(c=>c.update('none'));
-  VEH.on=false;DIVE.on=false;if(V3.dv)V3.dv.visible=false;if(V3.water)V3.water.visible=false;
+  VEH.on=false;VEH.fall=false;VEH.hs=false;VEH.base=null;DIVE.on=false;if(V3.dv)V3.dv.visible=false;if(V3.water)V3.water.visible=false;
 }
 function startCross(){
   if(!(S.L>=6)||S.bc==='cant')applyScn(0);
@@ -538,7 +540,7 @@ function startCross(){
   chD.options.scales.y.min=dlo*1.1;chD.options.scales.y.max=dhi+(dhi-dlo)*.1+.01;
   const pk=eM[0].reduce((b,p)=>p.y>b.y?p:b),vk=eV[0].reduce((b,p)=>p.y>b.y?p:b);
   $('scnNote').textContent='Crossing envelope (dashed yellow, includes the other loads): max M = '+f(pk.y,1)+' kN·m at x = '+f(pk.x,2)+' m; max V = '+f(vk.y,1)+' kN near x = '+f(vk.x,2)+' m.';
-  VEH.sol=sol;VEH.base=R;VEH.kfix=45/dm;VEH.t=0;VEH.k=-1;VEH.pos=0;VEH.on=true;SIM.auto=false;SIM.m=1;SIM.target=1;SIM.vm=0;
+  VEH.sol=sol;VEH.base=R;VEH.kfix=45/dm;VEH.t=0;VEH.k=-1;VEH.pos=0;VEH.on=true;VEH.fall=false;VEH.hs=true;simClear();SIM.auto=false;SIM.m=1;SIM.target=1;SIM.vm=0;
   if(V3.ok&&!V3.on)$('simView').click();
 }
 function crossStep(dt){
@@ -553,7 +555,7 @@ function startDive(){
     const b=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.7,12),mt),h=new THREE.Mesh(new THREE.SphereGeometry(.16,12,12),sk),a=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.6,8),sk);
     h.position.y=.55;a.position.y=.65;g.add(b,h,a);V3.sc.add(g);V3.dv=g;
     V3.water=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshBasicMaterial({color:0x0ea5e9,transparent:true,opacity:.35}));V3.water.rotation.x=-Math.PI/2;V3.sc.add(V3.water);}
-  Object.assign(DIVE,{on:true,t:0,ph:0,xd:.15,x:null,sp:null});SIM.auto=false;
+  Object.assign(DIVE,{on:true,t:0,ph:0,xd:.15,x:null,sp:null});VEH.on=false;VEH.fall=false;VEH.hs=false;simClear();SIM.auto=false;
 }
 function diveStep(dt){
   if(!DIVE.on)return;const t=DIVE.t+=dt;let m;
@@ -565,7 +567,8 @@ function diveStep(dt){
 }
 function drawExtras(dt,o){
   const{yC,gyW,L,pa}=o,th=V3.th||.3;
-  if(VEH.on){
+  drawVeh(dt,o);
+  if(false){
     if(!V3.vh){const wd=V3.wd||.5,bw=Math.min(wd+.3,1.6),g=new THREE.Group();
       const body=new THREE.Mesh(new THREE.BoxGeometry(1,.5,bw),new THREE.MeshStandardMaterial({color:0x38bdf8,roughness:.5})),cab=new THREE.Mesh(new THREE.BoxGeometry(.9,.45,bw),new THREE.MeshStandardMaterial({color:0xfacc15}));
       g.add(body,cab);V3.sc.add(g);V3.vh={g,body,cab,w:VEH.ax.map(()=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,Math.min(wd+.4,1.8),14).rotateX(Math.PI/2),new THREE.MeshStandardMaterial({color:0x111827}));V3.sc.add(w);return w;})};}
@@ -588,6 +591,37 @@ function drawExtras(dt,o){
   if(DIVE.on&&DIVE.sp){DIVE.sp.forEach(q=>{q.vy-=20*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt;});
     for(let i=0;i<60;i++){const q=DIVE.sp[i];if(q&&q.l>0)pa.setXYZ(i,q.x,q.y,(i%5-2)*.1);else pa.setXYZ(i,0,-99,0);}V3.pts.material.color.set(0x7dd3fc);}
   else V3.pts.material.color.set(0xfbbf24);
+}
+function crossStep2(dt,g){
+  if(!VEH.on)return;
+  const toFall=()=>{VEH.on=false;VEH.fall=true;VEH.fy=0;VEH.vy=0;VEH.land=0;};
+  if(SIM.broken){toFall();return;}
+  VEH.t+=dt;const u=Math.min(1,VEH.t/VEH.dur),k=Math.round(u*(VEH.sol.length-1));
+  VEH.pos=u*(S.L+5.5);SIM.m=1;SIM.vm=0;SIM.target=1;
+  if(k!==VEH.k){VEH.k=k;R=VEH.sol[k];setCharts(R);
+    if(R.sig>=S.Sy){toFall();SIM.broken=true;SIM.xb=R.xM;SIM.age=0;breakNow(g);
+      $('scnNote').textContent='The beam fractured at x = '+f(R.xM,2)+' m while the truck was crossing (stress reached '+f(R.sig,0)+' MPa).';return;}}
+  if(u>=1){VEH.on=false;VEH.hs=false;R=VEH.base;setCharts(R);}
+}
+function mkTruck(){
+  const bw=Math.min((V3.wd||.5)+.3,1.6),g=new THREE.Group(),mt=c=>new THREE.MeshStandardMaterial({color:c,roughness:.5});
+  const cargo=new THREE.Mesh(new THREE.BoxGeometry(1,.5,bw),mt(0x38bdf8)),cab=new THREE.Mesh(new THREE.BoxGeometry(1,.45,bw),mt(0xfacc15));
+  const wh=VEH.ax.map(()=>new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,bw+.15,14).rotateX(Math.PI/2),mt(0x111827)));
+  g.add(cargo,cab,...wh);V3.sc.add(g);
+  const road=new THREE.Group(),rm=mt(0x334155);
+  [-1,1].forEach(s=>{const b=new THREE.Mesh(new THREE.BoxGeometry(9,.3,bw+1.2),rm);b.position.set(s*9.5,(V3.th||.3)/2-.15,0);road.add(b);});V3.sc.add(road);
+  V3.tk={g,cargo,cab,wh,road};
+}
+function drawVeh(dt,o){
+  const{yC,gyW,L}=o,th=V3.th||.3,wu=10/L,show=VEH.on||VEH.fall;
+  if(!show){if(V3.tk){V3.tk.g.visible=false;V3.tk.road.visible=false;}return;}
+  if(!V3.tk)mkTruck();
+  const T=V3.tk,cx=x=>Math.min(Math.max(x,0),L);T.g.visible=true;T.road.visible=true;
+  if(VEH.on){const ref=VEH.pos,yf=yC(cx(ref)),yr=yC(cx(ref-5.5));VEH.gx=(ref-2.75)*wu-5;VEH.gy=(yf+yr)/2+th/2+.57;VEH.ang=Math.atan2(yf-yr,5.5*wu);VEH.fy=0;VEH.vy=0;VEH.land=0;}
+  else{VEH.vy-=20*dt;VEH.fy+=VEH.vy*dt;if(VEH.gy+VEH.fy<gyW+.6){VEH.fy=gyW+.6-VEH.gy;VEH.vy=0;VEH.land+=dt;}if(VEH.land>.9)T.g.visible=false;}
+  T.g.position.set(VEH.gx,VEH.gy+VEH.fy,0);T.g.rotation.z=VEH.ang;
+  T.cargo.scale.x=4.8*wu;T.cargo.position.set(-.95*wu,0,0);T.cab.scale.x=1.8*wu;T.cab.position.set(2.45*wu,-.03,0);
+  T.wh.forEach((w,i)=>w.position.set((VEH.ax[i].o+2.75)*wu,-.35,0));
 }
 $('simCross').onclick=startCross;$('simDive').onclick=startDive;
 $('clrLoads').onclick=()=>{S.loads=[];renderLoads();update();};
@@ -616,7 +650,7 @@ function updMohr(k){
   const cv=$('mohr'),W=cv.clientWidth,H=cv.clientHeight;if(!W||!R)return;
   const dpr=window.devicePixelRatio||1;cv.width=W*dpr;cv.height=H*dpr;const c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
   const cc=R.c,y=Math.max(-cc,Math.min(cc,(MOHR.y==null?cc*500:MOHR.y)/1e3)),M=R.M[k],V=R.V[k],I=R.I;
-  const sx=-M*y/I/1e6,tau=V*(cc*cc-y*y)/((S.sec==='rect'?2:3)*I)/1e6;
+  const sx=-M*y/I/1e6,tau=0;
   const ct=sx/2,Rr=Math.hypot(ct,tau),s1=ct+Rr,s2=ct-Rr,ext=Math.max(Math.abs(s1),Math.abs(s2),1e-6)*1.25;
   const sc=Math.min(W*.45/ext,Rr>0?H*.4/Rr:1e9),ox=W/2,oy=H/2,PX=v=>ox+v*sc,PY=v=>oy-v*sc;
   c.strokeStyle='#475569';c.lineWidth=1;c.beginPath();c.moveTo(8,oy);c.lineTo(W-8,oy);c.moveTo(ox,8);c.lineTo(ox,H-8);c.stroke();
@@ -624,7 +658,7 @@ function updMohr(k){
   c.strokeStyle='#e879f9';c.lineWidth=2;c.beginPath();c.arc(PX(ct),oy,Math.max(Rr*sc,.5),0,7);c.stroke();
   c.strokeStyle='#fbbf24';c.beginPath();c.moveTo(PX(sx),PY(tau));c.lineTo(PX(0),PY(-tau));c.stroke();
   const dot=(x,yv,col,t,dx,dy)=>{c.fillStyle=col;c.beginPath();c.arc(PX(x),PY(yv),5,0,7);c.fill();c.fillText(t,PX(x)+dx,PY(yv)+dy);};
-  dot(sx,tau,'#fbbf24','A (σx,τxy)',6,-8);dot(0,-tau,'#fbbf24','B',6,14);dot(s1,0,'#34d399','σ1',6,-8);dot(s2,0,'#34d399','σ2',-26,-8);dot(ct,Rr,'#f87171','τmax',6,-6);
+  dot(s1,0,'#34d399','σ1',6,-8);dot(s2,0,'#34d399','σ2',-26,-8);dot(ct,Rr,'#f87171','τmax',6,-6);
   $('mohrNote').textContent='y = '+f(y*1e3,1)+' mm: σx = '+f(sx,2)+', τxy = '+f(tau,2)+' MPa · σ1 = '+f(s1,2)+', σ2 = '+f(s2,2)+', τmax = '+f(Rr,2)+' MPa, principal angle = '+f(Math.atan2(2*tau,sx)*90/Math.PI,1)+'°';
 }
 $('cS').addEventListener('click',e=>{const r=$('cS').getBoundingClientRect();MOHR.y=chS.scales.y.getValueForPixel(e.clientY-r.top);updStress();});

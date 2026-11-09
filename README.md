@@ -2,7 +2,7 @@
 
 An interactive tool for analysing beams under different supports and loads. It plots shear force, bending moment, deflection and stress, checks the result against a yield limit, and includes a **3D bending and fracture simulation** with real-world scenarios, a moving-vehicle bridge crossing, a diving-board animation and a live Mohr's circle.
 
-Built as a **Solid Mechanics (APL104)** course project by **Avi Gupta**, M.Tech (MSME), 1st year. The theory follows the course material taught by **Prof. Prakhar Gupta**, notes referred from web page (see [Acknowledgements](#acknowledgements)).
+Built as a **Mechanics of Solids (ME2110)** course project by **Avi Gupta**, M.Tech (MSME), 1st year. The theory follows the course material taught by **Prof. Prakhar Gupta**, whose notes source is Ajeet Kumar's IIT Delhi APL104 web page (see [Acknowledgements](#acknowledgements)).
 
 > **Development note:** The concept, requirements and feature specification were defined by Avi Gupta from the ME2110 course material. The code was generated with Claude (Anthropic) from his prompts. The solver was checked against closed-form beam formulas (see [Validation](#validation)).
 
@@ -31,7 +31,8 @@ Both use the same solver method, so each can be used to cross-check the other. T
 - **Failure check:** factor of safety against yield, with SAFE, CAUTION and FAILURE status
 - **Hover inspection:** read V, M, v and σ at any position x, with a linked crosshair across all charts
 - **Support reactions** for every case, including the statically indeterminate fixed–fixed beam
-- **Mohr's circle:** click a height y on the stress chart to see the circle at the current section, with σx, τxy, principal stresses σ1 and σ2, maximum shear τmax and the principal angle. It includes the transverse shear stress τ = VQ/(Ib) as well as bending stress.
+- **Mohr's circle:** click a height y on the stress chart to see the circle for the bending stress state at that point (uniaxial σx = −My/I, no transverse shear), with principal stresses σ1 and σ2 and maximum shear τmax.
+- **Formulas in the chart titles:** every diagram is titled with the relation it is plotted from, for example EI·v″ = M(x).
 
 ### Real-world simulators and loads
 - **Scenario presets:**
@@ -50,10 +51,10 @@ Both use the same solver method, so each can be used to cross-check the other. T
 ### 3D simulation
 - The beam is drawn in 3D and bends in proportion to a **load multiplier** you control. It is coloured by local stress (cyan low, red at yield).
 - Drag to orbit and scroll to zoom. A button switches between 3D and 2D.
-- When stress reaches the yield limit the beam shakes, cracks and **fractures** at the point of maximum moment, with a flash and sparks. The pieces fall (hinged pieces swing about the supports, free pieces fall and bounce) and the loads fall with them.
+- When stress reaches the yield limit the beam shakes, cracks and **fractures** at the point of maximum moment, with a flash and sparks. The pieces fall (hinged pieces swing about the supports, free pieces fall and bounce) and the loads on the beam fall with them and disappear after landing.
 - **Ramp load to failure** raises the load automatically. **Reset** rebuilds the beam.
-- **Animate crossing:** a 3-axle truck drives across the bridge from x = 0 to beyond L. The charts update as it moves, the beam bends under it in 3D, and the dashed yellow lines trace the **maximum and minimum shear and moment envelopes** over the whole crossing (including the other loads on the beam).
-- **Dive:** a diver walks to the end of the board, bounces it twice, launches with a flip into water with a splash, and the board springs back and oscillates.
+- **Animate crossing:** a 3-axle truck drives across the bridge from x = 0 to beyond L. The charts update as it moves, the beam bends under it in 3D, and the dashed yellow lines trace the **maximum and minimum shear and moment envelopes** over the whole crossing (including the other loads on the beam). If the stress reaches the yield limit during the crossing, the beam fractures and the truck falls with it.
+- **Dive:** a diver walks to the end of the board, bounces it twice, launches with a flip into water with a splash, and the board springs back and oscillates. The board is coloured by the stress in each section as it bounces.
 
 ### Interaction
 - **Drag and drop on the schematic:** drag point loads and moments along the beam, drag either end of a UDL, or drag the middle of a UDL to move the whole load. The charts update live.
@@ -114,13 +115,11 @@ M/EI is integrated twice numerically (trapezoid rule on about 1200 points), and 
 | Cantilever | $v(0) = 0,\ \theta(0) = 0$ |
 | Fixed–fixed | $v = \theta = 0$ at both ends, which gives the two redundant reactions |
 
-**5. Transverse shear stress and Mohr's circle.** At height $y$ from the neutral axis, with $c$ the outer fibre distance:
+**5. Mohr's circle (bending stress state).** At height $y$ the stress state is uniaxial: $\sigma_x = -My/I$, $\sigma_y = 0$, $\tau_{xy} = 0$. The circle has centre $\sigma_x/2$ and radius
 
-$$\tau_{xy} = \frac{V\,Q}{I\,b} = \begin{cases} \dfrac{V\,(c^2-y^2)}{2I} & \text{rectangle} \\[2mm] \dfrac{V\,(c^2-y^2)}{3I} & \text{circle} \end{cases}$$
+$$\tau_{max} = \left|\frac{\sigma_x}{2}\right|, \qquad \sigma_{1,2} = \frac{\sigma_x}{2} \pm \tau_{max}$$
 
-The stress state is $(\sigma_x, \tau_{xy})$ with $\sigma_y = 0$. The Mohr's circle has centre $\sigma_x/2$ and radius
-
-$$\tau_{max} = \sqrt{\left(\frac{\sigma_x}{2}\right)^2 + \tau_{xy}^2}, \qquad \sigma_{1,2} = \frac{\sigma_x}{2} \pm \tau_{max}$$
+The transverse shear stress $\tau = VQ/(Ib)$ is deliberately not included, because it has not been covered in the ME2110 course yet.
 
 **6. Failure check.**
 
@@ -134,7 +133,7 @@ SAFE for FoS ≥ 2, CAUTION for 1 ≤ FoS < 2, FAILURE for FoS < 1. This check u
 
 ## Course topics covered
 
-Mapped to the [APL104 lecture index](https://web.iitd.ac.in/~ajeetk/APL104.html) by topic title (the exact numbers may differ from the notes):
+Course: ME2110 (Mechanics of Solids). Topics are mapped to the titles on [Ajeet Kumar's APL104 lecture index](https://web.iitd.ac.in/~ajeetk/APL104.html), the notes source. Lecture numbers may differ from your course:
 
 | Project feature | Lecture(s) |
 |---|---|
@@ -142,7 +141,7 @@ Mapped to the [APL104 lecture index](https://web.iitd.ac.in/~ajeetk/APL104.html)
 | Support reactions from equilibrium | 5–6: Stress equilibrium equations |
 | Principal stresses and Mohr's circle | 7–10: Stress transformation |
 | Flexure formula, neutral axis, moment of inertia | 23: Pure bending of beams |
-| Shear force and bending moment diagrams, transverse shear stress | 24: Non-uniform bending of beams |
+| Shear force and bending moment diagrams | 24: Non-uniform bending of beams |
 | Deflection by double integration, boundary conditions | 27: Theory of beams, Euler–Bernoulli beams |
 | Yield check and factor of safety | 31–32: Theories of failure |
 
@@ -175,8 +174,8 @@ The solver values above were checked numerically. The 3D view, vehicle crossing,
 ## Limitations
 
 - Euler–Bernoulli theory only: small deflections, plane sections, no shear deformation (less accurate for short, deep beams)
-- The failure check uses bending stress only. The Mohr's circle shows the combined state at any height, but a full von Mises or Tresca check along the beam is not done
-- Transverse shear formulas cover rectangular and circular sections only
+- The failure check uses bending stress only. The Mohr's circle shows the uniaxial bending state at any height; a full von Mises or Tresca check is not done
+- Transverse shear stress (τ = VQ/Ib) is not included
 - Linear elastic material with no plasticity. Ductile metals would form a plastic hinge rather than snapping at yield
 - Symmetric sections only, loaded through the centroid (no unsymmetrical bending)
 - No axial loads or buckling check
@@ -187,7 +186,7 @@ The solver values above were checked numerically. The 3D view, vehicle crossing,
 
 ## Possible extensions
 
-1. A full von Mises or Tresca check using the combined bending and shear stress along the beam
+1. Transverse shear stress, then a combined-stress (von Mises or Tresca) check along the beam
 2. Euler buckling check (Lecture 28)
 3. Deflection verification by energy methods (Lectures 29–30)
 4. Unsymmetrical sections and shear centre (Lectures 25–26)
@@ -205,3 +204,7 @@ The solver values above were checked numerically. The 3D view, vehicle crossing,
 ## Author
 
 **Avi Gupta**, M.Tech (MSME), 1st year
+
+## License
+
+Add a license of your choice before publishing (for example MIT) and place it in a `LICENSE` file.
