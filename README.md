@@ -154,21 +154,6 @@ $$\sigma = \frac{P}{A} + \frac{M\,c}{I} \ge \sigma_{yield}, \qquad M = EI\,y''$$
 
 The linear theory leaves the size of the sideways deflection undetermined, so the animation lets it grow until the stress reaches yield and exaggerates it for display.
 
-## Course topics covered
-
-Course: ME2110 (Mechanics of Solids). Topics are mapped to the titles on [Ajeet Kumar's APL104 lecture index](https://web.iitd.ac.in/~ajeetk/APL104.html), the notes source. Lecture numbers may differ from your course:
-
-| Project feature | Lecture(s) |
-|---|---|
-| Young's modulus, linear elasticity | 15–16: Stress–strain relations |
-| Support reactions from equilibrium | 5–6: Stress equilibrium equations |
-| Principal stresses and Mohr's circle | 7–10: Stress transformation |
-| Flexure formula, neutral axis, moment of inertia | 23: Pure bending of beams |
-| Shear force and bending moment diagrams | 24: Non-uniform bending of beams |
-| Deflection by double integration, boundary conditions | 27: Theory of beams, Euler–Bernoulli beams |
-| Yield check and factor of safety | 31–32: Theories of failure |
-| Column buckling, P_cr for the three end conditions | Buckling of beams and columns (28; check the number in your notes) |
-
 ## Validation
 
 The beam solver in the page was run in Node.js and checked against closed-form results (L = 6 m, E = 200 GPa, 100 × 200 mm section):
