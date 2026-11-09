@@ -33,7 +33,8 @@ html,body{background:var(--bg);color:var(--tx);font-family:"IBM Plex Sans",ui-sa
   <h1 class="text-lg font-semibold">Beam Bending &amp; Deflection Analyzer</h1>
   <p class="text-xs" style="color:var(--mut)">Mechanics of Solids (ME2110) · Euler–Bernoulli beam · hover any chart to read V, M, v and σ at that x</p>
 </header>
-<main class="grid gap-4 p-4 lg:grid-cols-[370px_1fr]">
+<nav class="flex gap-2 px-4 pt-3"><button class="btn" id="navB" style="border-color:#22d3ee">Beam bending</button><button class="btn" id="navK">Column buckling (new)</button></nav>
+<main id="pgBend" class="grid gap-4 p-4 lg:grid-cols-[370px_1fr]">
 <aside class="space-y-3">
   <div class="panel p-3"><div class="h" style="color:var(--s)">Real-world simulators</div><select class="inp" id="scn" aria-label="Scenario"></select><p class="text-[11px] mt-2" id="scnNote" style="color:var(--mut)">Pick a ready-made engineering case. It sets the supports, section, material and loads, then try the 3D simulation.</p></div>
   <div class="panel p-3">
@@ -91,6 +92,39 @@ html,body{background:var(--bg);color:var(--tx);font-family:"IBM Plex Sans",ui-sa
   </div>
 </section>
 </main>
+<main id="pgBuck" style="display:none" class="grid gap-4 p-4 lg:grid-cols-[370px_1fr]">
+<aside class="space-y-3">
+  <div class="panel p-3"><div class="h" style="color:var(--s)">Real-life examples</div><select class="inp" id="bkEx" aria-label="Example"></select><p class="text-[11px] mt-2" id="bkExNote" style="color:var(--mut)">Choose an example to set up the column.</p></div>
+  <div class="panel p-3"><div class="h">End condition</div><div class="seg flex" id="bkBc"><button data-v="ff" class="on">Fixed–free</button><button data-v="pp">Pin–pin</button><button data-v="xx">Fixed–fixed</button></div>
+    <label class="lbl mt-2">Mode n (fixed–free): P<sub>n</sub> = [(2n+1)π/2]² EI/L²</label><select class="inp" id="bkN"><option value="0">n = 0 (lowest load, the real buckling load)</option><option value="1">n = 1</option><option value="2">n = 2</option></select></div>
+  <div class="panel p-3"><div class="h">Column</div><div class="grid grid-cols-2 gap-2">
+    <div><label class="lbl">Length L (m)</label><input class="inp" type="number" step="any" min="0.05" data-bk="L"></div>
+    <div><label class="lbl">Cross-section</label><select class="inp" data-bk="sec"><option value="rect">Rectangular</option><option value="circ">Circular</option></select></div>
+    <div class="bkr"><label class="lbl">Width b (mm)</label><input class="inp" type="number" step="any" min="0.1" data-bk="b"></div>
+    <div class="bkr"><label class="lbl">Height h (mm)</label><input class="inp" type="number" step="any" min="0.1" data-bk="h"></div>
+    <div class="bkc" style="display:none"><label class="lbl">Diameter d (mm)</label><input class="inp" type="number" step="any" min="0.1" data-bk="d"></div>
+    <div class="col-span-2"><label class="lbl">Material</label><select class="inp" id="bkMat"><option>Steel</option><option>Aluminum</option><option>Wood</option><option>Plastic</option><option>Custom</option></select></div>
+    <div><label class="lbl">Young’s modulus E (GPa)</label><input class="inp" type="number" step="any" min="0.1" data-bk="E"></div>
+    <div><label class="lbl">Yield strength (MPa)</label><input class="inp" type="number" step="any" min="0.1" data-bk="Sy"></div></div>
+    <p class="num text-[11px] mt-2" style="color:var(--mut)" id="bkI"></p></div>
+  <div class="panel p-3"><div class="h">From your notes</div><ul class="text-[12px] space-y-1" style="color:var(--mut)">
+    <li>• Buckling is a sudden instability of a slender column under compression (L/D &gt; 10).</li>
+    <li>• The buckled state has lower energy: if bending energy &lt; compressive energy, the column buckles.</li>
+    <li>• Fixed–free: EI y″ + P y = P y<sup>L</sup>, so y = y<sup>L</sup>(1 − cos(√(P/EI) x)) and P<sub>n</sub> = [(2n+1)π/2]² EI/L².</li>
+    <li>• n = 0 gives P<sub>cr</sub> = π²EI/4L². Higher modes only occur if the lower ones are restrained; between two modes no buckled profile exists.</li>
+    <li>• Pin–pin: π²EI/L². Fixed–fixed: 4π²EI/L² (shapes follow from the same method).</li>
+    <li>• P<sub>cr</sub> ∝ 1/L² and P<sub>cr</sub> ∝ EI, with I = πd⁴/64 (circle) or bh³/12 (rectangle, weaker axis).</li>
+    <li>• Fracture: bending stress σ = P/A + Mc/I with M = EI y″ (flexure formula) reaches the yield strength.</li></ul></div>
+</aside>
+<section class="space-y-3 min-w-0">
+  <div id="bkStatus" class="rounded-lg px-4 py-3 text-sm font-medium"></div>
+  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3" id="bkCards"></div>
+  <div class="panel p-3"><div class="flex flex-wrap items-center justify-between gap-2 mb-2"><div class="h !mb-0" style="color:var(--s)">Buckling and fracture simulation: <span id="bkFormula"></span></div><div class="flex gap-2"><button class="btn" id="bkRun">Run buckling test</button><button class="btn" id="bkReset">Reset</button></div></div>
+    <div class="flex items-center gap-3 mb-2"><label class="lbl !mb-0 whitespace-nowrap" for="bkSl">Load P / P<sub>cr</sub></label><input id="bkSl" type="range" min="0" max="1.3" step="0.005" value="0" class="w-full"><span class="num text-sm w-14 text-right" id="bkVal">0.00</span></div>
+    <div style="height:440px"><canvas id="bkCv" class="block w-full h-full"></canvas></div><div class="num text-[11px] mt-1" id="bkInfo" style="color:var(--mut)"></div></div>
+  <div class="grid md:grid-cols-2 gap-3"><div class="panel p-3"><div class="h">Critical load for the three end conditions</div><div id="bkTbl"></div></div>
+    <div class="panel p-3"><div class="h">P<sub>cr</sub> against length (P ∝ 1/L²)</div><div style="height:230px"><canvas id="bkCh"></canvas></div></div></div>
+</section></main>
 <footer class="text-center text-xs py-5 border-t" style="color:var(--mut);border-color:var(--line)">Made by <span style="color:var(--tx);font-weight:600">Avi Gupta</span> · MSME, 1st year · Mechanics of Solids (ME2110)</footer>
 
 <script>
@@ -662,6 +696,130 @@ function updMohr(k){
   $('mohrNote').textContent='y = '+f(y*1e3,1)+' mm: σx = '+f(sx,2)+', τxy = '+f(tau,2)+' MPa · σ1 = '+f(s1,2)+', σ2 = '+f(s2,2)+', τmax = '+f(Rr,2)+' MPa, principal angle = '+f(Math.atan2(2*tau,sx)*90/Math.PI,1)+'°';
 }
 $('cS').addEventListener('click',e=>{const r=$('cS').getBoundingClientRect();MOHR.y=chS.scales.y.getValueForPixel(e.clientY-r.top);updStress();});
+
+/* ---------- column buckling page (concepts from the ME2110 notes) ---------- */
+const BK={bc:'ff',n:0,L:1,sec:'rect',b:20,h:20,d:25,E:200,Sy:250,r:0,target:0,auto:false,state:'ok',a:0,pcs:[],par:[],age:0,shake:0,last:0,vis:false,rmax:1.3,afr1:1,C:null};
+const BMAT={Steel:[200,250],Aluminum:[69,275],Wood:[11,40],Plastic:[3,40]};
+const BEX=[
+ ['Flagpole or lamp post','Fixed in the ground, free at the top: the fixed–free case, P_cr = π²EI/4L².',{bc:'ff',L:4,sec:'circ',d:100,mat:'Steel'}],
+ ['Piston rod','A slender steel rod pushed by a piston and pinned at both ends: pin–pin, P_cr = π²EI/L².',{bc:'pp',L:.6,sec:'circ',d:12,mat:'Steel'}],
+ ['Plastic ruler pressed between your hands','Very slender and held at two points: pin–pin. It bends away suddenly when you squeeze it.',{bc:'pp',L:.3,sec:'rect',b:30,h:1.5,mat:'Plastic'}],
+ ['Truss strut in a bridge or roof','A steel bar carrying compression between two joints: pin–pin.',{bc:'pp',L:2,sec:'circ',d:30,mat:'Steel'}],
+ ['Building column clamped top and bottom','Rigidly framed at both ends: fixed–fixed, P_cr = 4π²EI/L², four times a pin–pin column.',{bc:'xx',L:3,sec:'rect',b:40,h:40,mat:'Steel'}],
+ ['Wooden scaffold pole','A slender timber post pinned at both ends. Wood has a low E, so P_cr is small.',{bc:'pp',L:2.5,sec:'rect',b:50,h:50,mat:'Wood'}],
+ ['Aluminium antenna mast','Fixed at the base and free at the top: fixed–free.',{bc:'ff',L:3,sec:'circ',d:40,mat:'Aluminum'}]];
+const fP=p=>p>=1e3?f(p/1e3,2)+' kN':f(p,2)+' N';
+function bkC(){
+  const s=BK,rect=s.sec==='rect',n=s.bc==='ff'?s.n:0;let I,c,A,D;
+  if(rect){const w=Math.min(s.b,s.h),t=Math.max(s.b,s.h);I=t*w**3/12;c=w/2;A=s.b*s.h;D=w;}else{I=Math.PI*s.d**4/64;c=s.d/2;A=Math.PI*s.d*s.d/4;D=s.d;}
+  I*=1e-12;c*=1e-3;A*=1e-6;const L=s.L,EI=s.E*1e9*I,fac=s.bc==='ff'?(2*n+1)**2/4:s.bc==='pp'?1:4;
+  const Pcr=Math.PI**2*EI*fac/L**2,k=(2*n+1)*Math.PI/(2*L),y2=s.bc==='ff'?k*k:s.bc==='pp'?(Math.PI/L)**2:2*Math.PI**2/L**2;
+  return{I,c,A,D,L,EI,Pcr,k,y2,sigcr:Pcr/A/1e6,LD:L*1e3/D,n};
+}
+const bkY=(x,C)=>BK.bc==='ff'?1-Math.cos(C.k*x):BK.bc==='pp'?Math.sin(Math.PI*x/C.L):(1-Math.cos(2*Math.PI*x/C.L))/2;
+const bkY2=(x,C)=>BK.bc==='ff'?C.k*C.k*Math.cos(C.k*x):BK.bc==='pp'?(Math.PI/C.L)**2*Math.sin(Math.PI*x/C.L):2*Math.PI**2/C.L**2*Math.cos(2*Math.PI*x/C.L);
+function bkReset(){BK.state='ok';BK.a=0;BK.r=0;BK.target=0;BK.auto=false;BK.pcs=[];BK.par=[];BK.age=0;BK.shake=0;$('bkSl').value=0;}
+function bkRefresh(){
+  const s=BK,C=bkC();BK.C=C;BK.afr1=(s.Sy*1e6-C.Pcr/C.A)/(s.E*1e9*C.c*C.y2);
+  $('bkFormula').textContent='P_cr = '+(s.bc==='ff'?(C.n?'[(2n+1)π/2]²EI/L² (n = '+C.n+')':'π²EI/4L²'):s.bc==='pp'?'π²EI/L²':'4π²EI/L²');
+  const sl=C.LD>10,crush=C.sigcr>=s.Sy,st=$('bkStatus');
+  const cl_=!sl?['rgba(251,191,36,.15)','#fbbf24','NOT SLENDER: L/D = '+f(C.LD,1)+' (the notes need L/D > 10). This short column will crush before it buckles.']:
+    crush?['rgba(251,191,36,.15)','#fbbf24','The Euler stress ('+f(C.sigcr,0)+' MPa) is above the yield strength, so the column crushes before it buckles.']:
+    ['rgba(52,211,153,.13)','#34d399','SLENDER (L/D = '+f(C.LD,1)+'): the column buckles suddenly at P_cr = '+fP(C.Pcr)+', then fractures when the bending stress reaches yield.'];
+  st.className='rounded-lg px-4 py-3 text-sm font-medium';st.style.cssText='background:'+cl_[0]+';border:1px solid '+cl_[1]+';color:'+cl_[1];st.textContent=cl_[2];
+  const card=(t,v,u,sub,col)=>`<div class="panel p-3"><div class="text-[11px]" style="color:var(--mut)">${t}</div><div class="num text-xl font-semibold" style="color:${col}">${v}<span class="text-xs ml-1">${u}</span></div><div class="num text-[11px]" style="color:var(--mut)">${sub}</div></div>`;
+  $('bkCards').innerHTML=card('Critical load P_cr',f(C.Pcr>=1e3?C.Pcr/1e3:C.Pcr,2),C.Pcr>=1e3?'kN':'N','buckling load','#e879f9')+card('Euler stress P_cr/A',f(C.sigcr,1),'MPa','yield '+f(s.Sy,0)+' MPa','#fbbf24')+card('Slenderness L/D',f(C.LD,1),'','slender if above 10','#22d3ee')+card('Second moment I',f(C.I*1e12,1),'mm⁴','weaker axis','#a3e635');
+  $('bkI').textContent='I = '+(s.sec==='rect'?'(larger side)(smaller side)³/12':'πd⁴/64')+' = '+f(C.I*1e12,1)+' mm⁴,  A = '+f(C.A*1e6,1)+' mm²';
+  const rows=[['Fixed–free','π²EI / 4L²',.25],['Pin–pin','π²EI / L²',1],['Fixed–fixed','4π²EI / L²',4]];
+  $('bkTbl').innerHTML='<table class="num text-[12px] w-full"><tr style="color:var(--mut)"><td>End condition</td><td>P_cr</td><td>Value</td><td>Ratio</td></tr>'+rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${fP(Math.PI**2*C.EI*r[2]/C.L**2)}</td><td>${r[2]/.25}×</td></tr>`).join('')+'</table><p class="text-[11px] mt-2" style="color:var(--mut)">Same column and material: fixing the ends makes it 4 and then 16 times stronger against buckling than the fixed–free column.</p>';
+  if(BK.vis){if(!BK.ch)BK.ch=new Chart($('bkCh'),{type:'line',data:{datasets:[]},options:{responsive:true,maintainAspectRatio:false,animation:false,parsing:false,scales:{x:{type:'linear',title:{display:true,text:'L (m)',color:'#64748b'},grid,ticks:tick},y:{type:'logarithmic',title:{display:true,text:'P_cr (kN)',color:'#64748b'},grid,ticks:tick}},plugins:{legend:{labels:{color:'#94a3b8',boxWidth:10,font:{size:10}}}}}});
+    const Ls=[];for(let i=0;i<=40;i++)Ls.push(s.L*(.3+2.7*i/40));
+    BK.ch.data.datasets=[['Fixed–free','#e879f9',.25],['Pin–pin','#22d3ee',1],['Fixed–fixed','#a3e635',4]].map(([nm,cc,fc])=>({label:nm,data:Ls.map(L=>({x:L,y:Math.PI**2*C.EI*fc/L**2/1e3})),borderColor:cc,pointRadius:0,borderWidth:2})).concat([{label:'this column',data:[{x:s.L,y:C.Pcr/1e3}],showLine:false,pointRadius:6,backgroundColor:'#f87171'}]);BK.ch.update('none');}
+  bkReset();
+}
+function syncBk(){
+  document.querySelectorAll('[data-bk]').forEach(e=>{e.value=BK[e.dataset.bk];});
+  document.querySelectorAll('.bkr').forEach(e=>e.style.display=BK.sec==='rect'?'':'none');document.querySelectorAll('.bkc').forEach(e=>e.style.display=BK.sec==='circ'?'':'none');
+  document.querySelectorAll('#bkBc button').forEach(b=>b.classList.toggle('on',b.dataset.v===BK.bc));$('bkN').value=BK.n;$('bkN').disabled=BK.bc!=='ff';
+}
+document.querySelectorAll('[data-bk]').forEach(e=>e.addEventListener('input',()=>{const k=e.dataset.bk;if(k==='sec'){BK.sec=e.value;}else{const v=parseFloat(e.value);if(!(v>0))return;BK[k]=v;if(k==='E'||k==='Sy')$('bkMat').value='Custom';}syncBk();bkRefresh();}));
+document.querySelectorAll('#bkBc button').forEach(b=>b.onclick=()=>{BK.bc=b.dataset.v;syncBk();bkRefresh();});
+$('bkN').onchange=e=>{BK.n=+e.target.value;bkRefresh();};
+$('bkMat').onchange=e=>{const m=BMAT[e.target.value];if(m){BK.E=m[0];BK.Sy=m[1];syncBk();bkRefresh();}};
+$('bkEx').innerHTML=BEX.map((x,i)=>`<option value="${i}">${x[0]}</option>`).join('');
+function applyBkEx(i){const c=BEX[i][2],m=BMAT[c.mat];Object.assign(BK,{bc:c.bc,L:c.L,sec:c.sec,b:c.b||BK.b,h:c.h||BK.h,d:c.d||BK.d,n:0,E:m[0],Sy:m[1]});$('bkMat').value=c.mat;$('bkExNote').textContent=BEX[i][1];syncBk();bkRefresh();}
+$('bkEx').onchange=e=>applyBkEx(+e.target.value);
+$('bkSl').oninput=e=>{if(BK.state==='broke')return;BK.target=+e.target.value;BK.auto=false;};
+$('bkRun').onclick=()=>{if(BK.state==='broke')bkReset();BK.auto=true;};
+$('bkReset').onclick=bkReset;
+function bkPts(C,g,a,r){
+  const N=60,P=r*C.Pcr,o=[];
+  for(let i=0;i<=N;i++){const x=C.L*i/N;o.push({x:g.cx+a*bkY(x,C)*g.ex,y:g.base-x*g.s+g.sh*x/C.L,r:(P/C.A+BK.E*1e9*C.c*a*Math.abs(bkY2(x,C)))/(BK.Sy*1e6)});}
+  return o.map((p,i)=>{const A=o[Math.max(i-1,0)],B=o[Math.min(i+1,N)],dx=B.x-A.x,dy=B.y-A.y,n=Math.hypot(dx,dy)||1,nx=-dy/n*7,ny=dx/n*7;return{x:p.x,y:p.y,r:p.r,tx:p.x+nx,ty:p.y+ny,bx:p.x-nx,by:p.y-ny};});
+}
+function bkBreak(C,g,why){
+  const pts=bkPts(C,g,BK.a,BK.r);let jb=30;
+  if(why!=='crushed'){let m=-1;pts.forEach((p,i)=>{if(p.r>m+1e-9){m=p.r;jb=i;}});}
+  const lean=Math.sign(pts[60].x-g.cx)||1,up=pts.slice(jb);
+  const cx=up.reduce((s,p)=>s+p.x,0)/up.length,cy=up.reduce((s,p)=>s+p.y,0)/up.length;
+  BK.pcs=[];if(jb>0)BK.pcs.push({P:pts.slice(0,jb+1),st:true});
+  BK.pcs.push({P:up,cx,cy,tx:0,ty:0,vx:lean*55,vy:-120,al:0,w:lean*.9,top:pts[60]});
+  BK.par=Array.from({length:45},()=>({x:pts[jb].x,y:pts[jb].y,vx:(Math.random()-.5)*420,vy:-Math.random()*320,l:.5+Math.random()*.9}));
+  BK.state='broke';BK.why=why;BK.xb=C.L*jb/60;BK.age=0;BK.shake=1;
+}
+function bkFrame(ts){
+  requestAnimationFrame(bkFrame);
+  if(!BK.vis||!BK.C)return;
+  const cv=$('bkCv'),W=cv.clientWidth,H=cv.clientHeight;if(!W)return;
+  const dt=Math.min((ts-(BK.last||ts))/1000,.05);BK.last=ts;
+  const dpr=window.devicePixelRatio||1;if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  const c=cv.getContext('2d'),C=BK.C,Sy=BK.Sy*1e6,s=Math.min(300,H-150)/C.L,g={cx:W/2,base:H-60,s,ex:BK.afr1>0?s*.18*C.L/BK.afr1:s*.1,sh:0};
+  c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,W,H);
+  if(BK.state!=='broke'){
+    if(BK.auto){BK.target=Math.min(BK.rmax,BK.target+.2*dt);$('bkSl').value=BK.target;}
+    BK.r+=(BK.target-BK.r)*Math.min(1,dt*6);
+    const P=BK.r*C.Pcr,afr=(Sy-Math.max(1,BK.r)*C.Pcr/C.A)/(BK.E*1e9*C.c*C.y2);g.sh=7*Math.min(BK.r,1);
+    if(P/C.A>=Sy)bkBreak(C,g,'crushed');
+    else if(BK.r>=1&&afr>0){BK.a+=(afr*.15+1.4*BK.a)*dt;BK.state='buck';if(BK.a>=afr)bkBreak(C,g,'buckled');}
+    else if(BK.r<1){BK.a=Math.max(0,BK.a-.5*C.L*dt);BK.state=BK.a>0?'buck':'ok';}
+  }else BK.age+=dt;
+  g.sh=7*Math.min(BK.r,1);
+  c.save();if(BK.shake>0){c.translate((Math.random()-.5)*14*BK.shake,(Math.random()-.5)*8*BK.shake);BK.shake=Math.max(0,BK.shake-dt*2.2);}
+  c.fillStyle='#0b1220';c.fillRect(-20,g.base,W+40,H-g.base+20);c.strokeStyle='#334155';c.beginPath();c.moveTo(-20,g.base);c.lineTo(W+20,g.base);c.stroke();
+  if(BK.bc==='pp'){c.fillStyle='#475569';c.beginPath();c.moveTo(g.cx,g.base);c.lineTo(g.cx-15,g.base+18);c.lineTo(g.cx+15,g.base+18);c.closePath();c.fill();}
+  else{c.fillStyle='#475569';c.fillRect(g.cx-28,g.base,56,16);c.strokeStyle='#64748b';for(let i=-24;i<28;i+=8){c.beginPath();c.moveTo(g.cx+i,g.base+16);c.lineTo(g.cx+i-6,g.base+24);c.stroke();}}
+  const plate=(x,y,T)=>{const q=[[x-24,y-9],[x+24,y-9],[x+24,y-1],[x-24,y-1]].map(p=>T?T(p[0],p[1]):p);c.fillStyle='#94a3b8';c.beginPath();c.moveTo(q[0][0],q[0][1]);for(let i=1;i<4;i++)c.lineTo(q[i][0],q[i][1]);c.closePath();c.fill();};
+  if(BK.state!=='broke'){
+    const pts=bkPts(C,g,BK.a,BK.r);strip(c,pts);const top=pts[60];plate(top.x,top.y);
+    const ln=18+55*Math.min(BK.r,1.3);arrow(c,top.x,top.y-9-ln,top.y-9,'#fb923c');c.fillStyle='#fb923c';c.font='11px IBM Plex Mono, monospace';c.textAlign='center';c.fillText('P = '+fP(BK.r*C.Pcr),top.x,top.y-ln-16);
+  }else{
+    for(const p of BK.pcs){
+      if(p.st){strip(c,p.P);continue;}
+      p.vy+=1500*dt;p.tx+=p.vx*dt;p.ty+=p.vy*dt;p.al+=p.w*dt;
+      const ca=Math.cos(p.al),sa=Math.sin(p.al),T=(x,y)=>[p.cx+(x-p.cx)*ca-(y-p.cy)*sa+p.tx,p.cy+(x-p.cx)*sa+(y-p.cy)*ca+p.ty];
+      let low=-1e9;p.P.forEach(q=>{low=Math.max(low,T(q.tx,q.ty)[1],T(q.bx,q.by)[1]);});
+      if(low>g.base+4){p.ty-=low-g.base-4;p.vy=p.vy>90?-p.vy*.3:0;p.vx*=.85;p.w*=.7;}
+      strip(c,p.P,T);plate(p.top.x,p.top.y,T);
+    }
+    c.fillStyle='#fbbf24';BK.par=BK.par.filter(q=>q.l>0);for(const q of BK.par){q.vy+=1100*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt;c.globalAlpha=Math.max(0,q.l);c.fillRect(q.x,q.y,3,3);}c.globalAlpha=1;
+  }
+  c.restore();
+  c.textAlign='center';c.font='700 18px IBM Plex Sans, sans-serif';
+  if(BK.state==='ok'){c.fillStyle='#34d399';c.fillText(BK.r<1?'STRAIGHT: P < P_cr':'',W/2,28);}
+  else if(BK.state==='buck'){c.fillStyle='#fbbf24';c.fillText('BUCKLED: sudden sideways bending',W/2,28);}
+  else{c.globalAlpha=Math.min(1,BK.age*2);c.fillStyle='#f87171';c.fillText((BK.why==='crushed'?'CRUSHED (short column)':'FRACTURE after buckling')+' at '+f(BK.xb,2)+' m from the base',W/2,28);c.globalAlpha=1;}
+  $('bkVal').textContent=f(BK.r,2);
+  $('bkInfo').textContent=BK.state==='broke'?'Press Reset to rebuild the column. The fracture motion is an illustration.':'P = '+fP(BK.r*C.Pcr)+' ('+f(BK.r,2)+' P_cr). Sideways deflection is exaggerated (drawn ×'+f(g.ex/g.s,0)+'); its size is not fixed by the theory in your notes, so it grows until the bending stress reaches yield.';
+}
+function showPage(k){
+  const K=k==='K';$('pgBend').style.display=K?'none':'';$('pgBuck').style.display=K?'':'none';BK.vis=K;
+  $('navB').style.borderColor=K?'':'#22d3ee';$('navK').style.borderColor=K?'#22d3ee':'';
+  if(K){syncBk();bkRefresh();}
+}
+const route=()=>showPage(location.hash==='#buckling'?'K':'B');
+$('navB').onclick=()=>{location.hash='bending';showPage('B');};$('navK').onclick=()=>{location.hash='buckling';showPage('K');};
+addEventListener('hashchange',route);requestAnimationFrame(bkFrame);
+setTimeout(route,0);
 
 requestAnimationFrame(simFrame);
 new ResizeObserver(()=>drawBeam()).observe($('beam').parentElement);

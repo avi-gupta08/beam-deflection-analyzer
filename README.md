@@ -1,6 +1,6 @@
-# Beam Bending & Deflection Analyzer
+# Beam Bending, Deflection & Column Buckling Analyzer
 
-An interactive tool for analysing beams under different supports and loads. It plots shear force, bending moment, deflection and stress, checks the result against a yield limit, and includes a **3D bending and fracture simulation** with real-world scenarios, a moving-vehicle bridge crossing, a diving-board animation and a live Mohr's circle.
+An interactive tool with two pages. The **beam page** analyses beams under different supports and loads: it plots shear force, bending moment, deflection and stress, checks the result against a yield limit, and includes a **3D bending and fracture simulation** with real-world scenarios, a moving-vehicle bridge crossing, a diving-board animation and a live Mohr's circle. The **column buckling page** simulates the sudden buckling and fracture of a slender column, with real-life examples.
 
 Built as a **Mechanics of Solids (ME2110)** course project by **Avi Gupta**, M.Tech (MSME), 1st year. The theory follows the course material taught by **Prof. Prakhar Gupta**, whose notes source is Ajeet Kumar's IIT Delhi APL104 web page (see [Acknowledgements](#acknowledgements)).
 
@@ -17,6 +17,7 @@ Built as a **Mechanics of Solids (ME2110)** course project by **Avi Gupta**, M.T
 | Run | Open the file in a browser | `streamlit run beam_analyzer.py` |
 | Simulation | 3D (and 2D) real-time animation | 2D animation, frames computed in Python |
 | Scenarios, load library, moving vehicle, diver, drag-and-drop, Mohr's circle | Yes | **Not included** |
+| Column buckling page | Yes | **Not included** |
 
 Both use the same solver method, so each can be used to cross-check the other. The Python version has the core analysis and the 2D breaking simulation only.
 
@@ -59,6 +60,18 @@ Both use the same solver method, so each can be used to cross-check the other. T
 ### Interaction
 - **Drag and drop on the schematic:** drag point loads and moments along the beam, drag either end of a UDL, or drag the middle of a UDL to move the whole load. The charts update live.
 
+## Column buckling page (web version)
+
+A second page, reached with the **Column buckling** button at the top (or the `#buckling` link), simulates the buckling of a slender column. It uses only the concepts from the ME2110 notes:
+
+- **End conditions:** fixed–free (P<sub>cr</sub> = π²EI/4L², with higher modes P<sub>n</sub> = [(2n+1)π/2]²EI/L²), pin–pin (π²EI/L²) and fixed–fixed (4π²EI/L²).
+- **Section and material:** rectangular (weaker axis, bh³/12) or circular (πd⁴/64) section, with E and yield strength. P<sub>cr</sub> ∝ EI and P<sub>cr</sub> ∝ 1/L² are shown in a table and a chart.
+- **Slenderness check:** the column is treated as slender when L/D > 10. A short column crushes before it buckles.
+- **Animation:** the load is raised towards P<sub>cr</sub>. At P<sub>cr</sub> the column bends suddenly into the buckled shape y = y<sup>L</sup>(1 − cos(√(P/EI) x)) (fixed–free), and the sideways deflection grows until the bending stress σ = P/A + Mc/I (with M = EI y″) reaches the yield strength. The column then **fractures** at the section of largest stress and the pieces fall.
+- **Real-life examples:** flagpole or lamp post, piston rod, plastic ruler, truss strut, building column, wooden scaffold pole and an antenna mast.
+
+The sideways deflection is not fixed by the linear theory in the notes, so the animation exaggerates it and lets it grow until yield. The fracture motion is an illustration.
+
 ## Quick start
 
 **Web version**
@@ -81,6 +94,7 @@ The app opens in your browser at `http://localhost:8501`.
 4. Click the **stress chart** at a height y to see the Mohr's circle.
 5. In the simulation panel, move the **load multiplier** slider to bend the beam, or press **Ramp load to failure**.
 6. Try **Animate crossing** on the bridge scenario and **Dive** on the diving board.
+7. Press **Column buckling** at the top, pick a real-life example, choose the end condition, and press **Run buckling test**. Watch the column stay straight until P = P_cr, buckle suddenly, and fracture.
 
 ## Sign convention
 
@@ -129,7 +143,25 @@ SAFE for FoS ≥ 2, CAUTION for 1 ≤ FoS < 2, FAILURE for FoS < 1. This check u
 
 **7. Moving loads and envelopes.** For each vehicle position (91 steps across the span plus run-off), the beam is solved with the vehicle's axles that are on the beam added to the existing loads. The envelope at each $x$ is the maximum and minimum of $M$ and $V$ over all positions.
 
-**8. Simulation.** The system is linear, so stored results are scaled by the load multiplier $m$ (deflection × $m$, stress × $m$). Fracture occurs at $m = \text{FoS}$, at the section of maximum $|M|$. Deflections are drawn exaggerated so they are visible, and the page shows the factor.
+**8. Simulation (beam page).** The system is linear, so stored results are scaled by the load multiplier $m$ (deflection × $m$, stress × $m$). Fracture occurs at $m = \text{FoS}$, at the section of maximum $|M|$. Deflections are drawn exaggerated so they are visible, and the page shows the factor.
+
+**9. Column buckling (buckling page).** A slender column under an axial compressive load P is analysed with the same moment–curvature relation, $M = EI\,y''$. For a fixed–free column of length $L$ with end deflection $y^L$, the moment at $x$ is $M = P(y^L - y)$, which gives
+
+$$EI\,y'' + P\,y = P\,y^L$$
+
+The solution with $y(0) = 0$ and $y'(0) = 0$ is
+
+$$y(x) = y^L\left(1 - \cos\sqrt{\tfrac{P}{EI}}\,x\right)$$
+
+and the condition $y(L) = y^L$ requires $\cos\left(\sqrt{P/EI}\,L\right) = 0$, so
+
+$$P_n = \left[\frac{(2n+1)\pi}{2}\right]^2 \frac{EI}{L^2}, \qquad P_{cr} = P_0 = \frac{\pi^2 EI}{4L^2}$$
+
+Higher modes occur only if the lower ones are restrained, and between two modes no buckled profile exists. The same method gives $P_{cr} = \pi^2 EI/L^2$ for pin–pin and $4\pi^2 EI/L^2$ for fixed–fixed columns, so the three cases are in the ratio 1 : 4 : 16. In all cases $P_{cr} \propto EI$ and $P_{cr} \propto 1/L^2$, with $I = \pi d^4/64$ (circle) or $bh^3/12$ about the weaker axis (rectangle). A column is treated as slender when $L/D > 10$. Fracture in the animation occurs when the combined axial and bending stress reaches yield,
+
+$$\sigma = \frac{P}{A} + \frac{M\,c}{I} \ge \sigma_{yield}, \qquad M = EI\,y''$$
+
+The linear theory leaves the size of the sideways deflection undetermined, so the animation lets it grow until the stress reaches yield and exaggerates it for display.
 
 ## Course topics covered
 
@@ -144,6 +176,7 @@ Course: ME2110 (Mechanics of Solids). Topics are mapped to the titles on [Ajeet 
 | Shear force and bending moment diagrams | 24: Non-uniform bending of beams |
 | Deflection by double integration, boundary conditions | 27: Theory of beams, Euler–Bernoulli beams |
 | Yield check and factor of safety | 31–32: Theories of failure |
+| Column buckling, P_cr for the three end conditions | Buckling of beams and columns (28; check the number in your notes) |
 
 ## Validation
 
@@ -160,13 +193,15 @@ The solver was checked against closed-form results (L = 6 m, E = 200 GPa, 100 ×
 | Fixed–fixed, 20 kN at centre: Mmax | 15.00 kN·m | PL/8 = 15 kN·m |
 | Fixed–fixed, 20 kN at centre: δmax | 1.688 mm | PL³/192EI = 1.688 mm |
 
+Column buckling checks (steel, E = 200 GPa, 20 × 20 mm, L = 1 m, fixed–free): the program gives P_cr = 6579.7 N and the closed form π²EI/4L² gives 6579.7 N. For the same column the pin–pin load is 4 times the fixed–free load and the fixed–fixed load is 4 times the pin–pin load (1 : 4 : 16). All seven real-life examples were checked to be slender (L/D > 10) with an Euler stress below yield, so they buckle rather than crush.
+
 The solver values above were checked numerically. The 3D view, vehicle crossing, diver, drag-and-drop and Mohr's circle are visual features that are worth checking by hand against the formulas in the Theory section.
 
 ## Project structure
 
 ```
 .
-├── beam-analyzer.html    # full web version (HTML + Tailwind + JavaScript + Chart.js + three.js)
+├── beam-analyzer.html    # full web version: beam page + column buckling page (HTML + Tailwind + JavaScript + Chart.js + three.js)
 ├── beam_analyzer.py      # Python version (Streamlit + Plotly + NumPy), core analysis and 2D simulation
 └── README.md
 ```
@@ -178,8 +213,10 @@ The solver values above were checked numerically. The 3D view, vehicle crossing,
 - Transverse shear stress (τ = VQ/Ib) is not included
 - Linear elastic material with no plasticity. Ductile metals would form a plastic hinge rather than snapping at yield
 - Symmetric sections only, loaded through the centroid (no unsymmetrical bending)
-- No axial loads or buckling check
+- The beam analysis has no axial loads; column buckling is handled separately on the buckling page
 - The cantilever is always fixed at the left end
+- Buckling page: a perfectly straight, centrally loaded, elastic column. There are no initial imperfections or load eccentricity, no inelastic (short-column) buckling formula, and no fixed–pinned end condition
+- Buckling page: the linear theory does not fix the buckled amplitude, so the growth to fracture and the fracture motion are illustrations
 - The moving-vehicle analysis is static (quasi-static): the vehicle's weight is applied at each position with no dynamic amplification, and only one vehicle type (a 3-axle truck) is built in
 - The fracture and dive animations are illustrations, not fracture-mechanics or biomechanics models. Deflection in the animations is exaggerated
 - The scenario presets use estimated sizes for teaching, not design values
@@ -187,7 +224,7 @@ The solver values above were checked numerically. The 3D view, vehicle crossing,
 ## Possible extensions
 
 1. Transverse shear stress, then a combined-stress (von Mises or Tresca) check along the beam
-2. Euler buckling check (Lecture 28)
+2. Fixed–pinned columns and buckling about both axes
 3. Deflection verification by energy methods (Lectures 29–30)
 4. Unsymmetrical sections and shear centre (Lectures 25–26)
 5. Vehicle choices and dynamic amplification factors for bridge loading
