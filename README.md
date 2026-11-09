@@ -2,7 +2,7 @@
 
 An interactive tool with two pages. The **beam page** analyses beams under different supports and loads: it plots shear force, bending moment, deflection and stress, checks the result against a yield limit, and includes a **3D bending and fracture simulation** with real-world scenarios, a moving-vehicle bridge crossing, a diving-board animation and a live Mohr's circle. The **column buckling page** simulates the sudden buckling and fracture of a slender column, with real-life examples.
 
-Built as a **Mechanics of Solids (ME2110)** course project by **Avi Gupta**, M.Tech (MSME), 1st year. The theory follows the course material taught by **Prof. Prakhar Gupta**, whose notes source is Ajeet Kumar's IIT Delhi APL104 web page (see [Acknowledgements](#acknowledgements)).
+Built as a **Mechanics of Solids (ME2110)** course project by **Avi Gupta**, M.Tech (MSME), 1st year. The theory follows the course material taught by **Prof. Prakhar Gupta**.
 
 > **Development note:** The concept, requirements and feature specification were defined by Avi Gupta from the ME2110 course material. The code was generated with Claude (Anthropic) from his prompts. The solver was checked against closed-form beam formulas (see [Validation](#validation)).
 
@@ -194,6 +194,7 @@ The solver values above were checked numerically. The 3D view, vehicle crossing,
 .
 ├── beam-analyzer.html    # full web version: beam page + column buckling page (HTML + Tailwind + JavaScript + Chart.js + three.js)
 └── README.md
+└── LICENSE
 ```
 
 ## Limitations
@@ -230,7 +231,3 @@ The solver values above were checked numerically. The 3D view, vehicle crossing,
 ## Author
 
 **Avi Gupta**, M.Tech (MSME), 1st year
-
-## License
-
-Add a license of your choice before publishing (for example MIT) and place it in a `LICENSE` file.
