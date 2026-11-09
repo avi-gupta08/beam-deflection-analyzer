@@ -8,20 +8,19 @@ Built as a **Mechanics of Solids (ME2110)** course project by **Avi Gupta**, M.T
 
 ---
 
-## Two versions
+## Technologies
 
-| | Web version (full) | Python version |
+| Layer | Technology | Role |
 |---|---|---|
-| File | `beam-analyzer.html` | `beam_analyzer.py` |
-| Stack | HTML5, CSS3, Tailwind CSS, JavaScript, Chart.js, three.js, Canvas | Python 3, NumPy, pandas, Streamlit, Plotly |
-| Run | Open the file in a browser | `streamlit run beam_analyzer.py` |
-| Simulation | 3D (and 2D) real-time animation | 2D animation, frames computed in Python |
-| Scenarios, load library, moving vehicle, diver, drag-and-drop, Mohr's circle | Yes | **Not included** |
-| Column buckling page | Yes | **Not included** |
+| Page and styling | HTML5, CSS3, Tailwind CSS | Interface and dark theme |
+| Logic | JavaScript (ES6) | Beam solver, buckling model, interaction, animation physics |
+| Charts | Chart.js | Shear, moment, deflection and P_cr charts |
+| 2D drawing | HTML5 Canvas | Beam schematic, 2D simulation, Mohr's circle, buckling animation |
+| 3D drawing | three.js (WebGL) | 3D beam, loads, truck and diver |
 
-Both use the same solver method, so each can be used to cross-check the other. The Python version has the core analysis and the 2D breaking simulation only.
+The whole project is one self-contained file, `beam-analyzer.html`.
 
-## Features (web version)
+## Features
 
 ### Analysis
 - **Boundary conditions:** simply supported, cantilever, fixed–fixed
@@ -60,7 +59,7 @@ Both use the same solver method, so each can be used to cross-check the other. T
 ### Interaction
 - **Drag and drop on the schematic:** drag point loads and moments along the beam, drag either end of a UDL, or drag the middle of a UDL to move the whole load. The charts update live.
 
-## Column buckling page (web version)
+## Column buckling page
 
 A second page, reached with the **Column buckling** button at the top (or the `#buckling` link), simulates the buckling of a slender column. It uses only the concepts from the ME2110 notes:
 
@@ -74,17 +73,9 @@ The sideways deflection is not fixed by the linear theory in the notes, so the a
 
 ## Quick start
 
-**Web version**
 ```
-Open beam-analyzer.html in any modern browser (internet needed for the Tailwind, Chart.js and three.js CDNs).
+Open beam-analyzer.html in any modern browser. An internet connection is needed to load the Tailwind, Chart.js and three.js libraries.
 ```
-
-**Python version**
-```bash
-pip install streamlit plotly numpy pandas
-streamlit run beam_analyzer.py
-```
-The app opens in your browser at `http://localhost:8501`.
 
 ## How to use it
 
@@ -121,7 +112,7 @@ with $I = \dfrac{bh^3}{12}$ (rectangle) or $I = \dfrac{\pi d^4}{64}$ (circle).
 
 $$EI\,\frac{d^2v}{dx^2} = M(x)$$
 
-M/EI is integrated twice numerically (trapezoid rule on about 1200 points), and the integration constants are fixed by the boundary conditions:
+M/EI is integrated twice numerically (trapezoid rule on about 600 points, plus extra points around each load), and the integration constants are fixed by the boundary conditions:
 
 | Beam | Conditions |
 |---|---|
@@ -180,7 +171,7 @@ Course: ME2110 (Mechanics of Solids). Topics are mapped to the titles on [Ajeet 
 
 ## Validation
 
-The solver was checked against closed-form results (L = 6 m, E = 200 GPa, 100 × 200 mm section):
+The beam solver in the page was run in Node.js and checked against closed-form results (L = 6 m, E = 200 GPa, 100 × 200 mm section):
 
 | Case | Computed | Closed form |
 |---|---|---|
@@ -202,7 +193,6 @@ The solver values above were checked numerically. The 3D view, vehicle crossing,
 ```
 .
 ├── beam-analyzer.html    # full web version: beam page + column buckling page (HTML + Tailwind + JavaScript + Chart.js + three.js)
-├── beam_analyzer.py      # Python version (Streamlit + Plotly + NumPy), core analysis and 2D simulation
 └── README.md
 ```
 
@@ -228,7 +218,6 @@ The solver values above were checked numerically. The 3D view, vehicle crossing,
 3. Deflection verification by energy methods (Lectures 29–30)
 4. Unsymmetrical sections and shear centre (Lectures 25–26)
 5. Vehicle choices and dynamic amplification factors for bridge loading
-6. Bringing the scenarios, 3D view and Mohr's circle to the Python version
 
 ## Acknowledgements
 
@@ -236,7 +225,7 @@ The solver values above were checked numerically. The 3D view, vehicle crossing,
 - **Ajeet Kumar**, [*Solid Mechanics: APL104*](https://web.iitd.ac.in/~ajeetk/APL104.html), IIT Delhi: the lecture notes and videos used as the course reference
 - Reference book: *Solid Mechanics for Undergraduates* by Ajeet Kumar ([web edition](https://web.iitd.ac.in/~ajeetk/smb/book.html)) and *Strength of Materials* by S. P. Timoshenko
 - Code generated with [Claude](https://claude.ai) (Anthropic) from the author's prompts
-- Built with [Chart.js](https://www.chartjs.org/), [three.js](https://threejs.org/), [Tailwind CSS](https://tailwindcss.com/), [Streamlit](https://streamlit.io/), [Plotly](https://plotly.com/python/) and [NumPy](https://numpy.org/)
+- Built with [Chart.js](https://www.chartjs.org/), [three.js](https://threejs.org/) and [Tailwind CSS](https://tailwindcss.com/)
 
 ## Author
 
